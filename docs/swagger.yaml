@@ -1,0 +1,2750 @@
+basePath: /api
+definitions:
+  api.DetailResponse:
+    properties:
+      detail:
+        example: Страница не найдена.
+        type: string
+    type: object
+  api.loginRequest:
+    properties:
+      password:
+        example: admin123
+        type: string
+      username:
+        example: admin
+        type: string
+    type: object
+  api.refreshRequest:
+    properties:
+      refresh:
+        type: string
+    type: object
+  api.scanRequest:
+    properties:
+      agent:
+        type: integer
+      method:
+        example: all
+        type: string
+      subnet:
+        example: 192.168.1.0/24
+        type: string
+    type: object
+  deye.AccountInfoResponse:
+    properties:
+      code:
+        type: string
+      msg:
+        type: string
+      orgInfoList:
+        items:
+          $ref: '#/definitions/deye.AccountOrgInfo'
+        type: array
+      requestId:
+        type: string
+      success:
+        type: boolean
+    type: object
+  deye.AccountOrgInfo:
+    properties:
+      companyId:
+        type: integer
+      companyName:
+        type: string
+      roleName:
+        type: string
+    type: object
+  deye.AlertItem:
+    properties:
+      alertCode:
+        type: string
+      alertEndTime:
+        type: integer
+      alertId:
+        type: string
+      alertName:
+        type: string
+      alertStartTime:
+        type: integer
+      description:
+        type: string
+      deviceId:
+        type: string
+      deviceSn:
+        type: string
+      deviceType:
+        type: string
+      impact:
+        description: 0 нет, 1 выработка, 2 безопасность, 3 оба
+        type: integer
+      level:
+        description: 0 Notice, 1 Warning, 2 Failure
+        type: integer
+      protocolName:
+        type: string
+      reason:
+        type: string
+      solution:
+        type: string
+      status:
+        description: 1 открыта, 0 закрыта
+        type: integer
+    type: object
+  deye.BaseResponse:
+    properties:
+      code:
+        type: string
+      msg:
+        type: string
+      requestId:
+        type: string
+      success:
+        type: boolean
+    type: object
+  deye.ControlResponse:
+    properties:
+      code:
+        type: string
+      collectionTime:
+        type: integer
+      connectionStatus:
+        description: 0 offline, 1 online
+        type: integer
+      msg:
+        type: string
+      orderId:
+        type: integer
+      requestId:
+        type: string
+      success:
+        type: boolean
+    type: object
+  deye.DataPoint:
+    properties:
+      key:
+        type: string
+      unit:
+        type: string
+      value:
+        type: string
+    type: object
+  deye.DeviceAlertListResponse:
+    properties:
+      alertList:
+        items:
+          $ref: '#/definitions/deye.AlertItem'
+        type: array
+      code:
+        type: string
+      deviceId:
+        type: integer
+      deviceSn:
+        type: string
+      deviceType:
+        type: string
+      msg:
+        type: string
+      requestId:
+        type: string
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
+  deye.DeviceDetailItem:
+    properties:
+      deviceId:
+        type: integer
+      deviceSn:
+        type: string
+      deviceState:
+        type: integer
+      deviceType:
+        type: string
+      productId:
+        type: string
+      stationId:
+        type: integer
+      updateTime:
+        type: integer
+    type: object
+  deye.DeviceHistoryItem:
+    properties:
+      itemList:
+        items:
+          additionalProperties: {}
+          type: object
+        type: array
+      time:
+        type: string
+    type: object
+  deye.DeviceHistoryRawRequest:
+    properties:
+      deviceSn:
+        type: string
+      deviceType:
+        type: string
+      endTimestamp:
+        type: integer
+      measurePoints:
+        items:
+          type: string
+        type: array
+      startTimestamp:
+        type: integer
+    type: object
+  deye.DeviceHistoryRequest:
+    properties:
+      deviceSn:
+        type: string
+      deviceType:
+        type: string
+      endAt:
+        type: string
+      granularity:
+        type: integer
+      measurePoints:
+        items:
+          type: string
+        type: array
+      startAt:
+        type: string
+    type: object
+  deye.DeviceHistoryResponse:
+    properties:
+      code:
+        type: string
+      dataList:
+        items:
+          $ref: '#/definitions/deye.DeviceHistoryItem'
+        type: array
+      deviceId:
+        type: integer
+      deviceSn:
+        type: string
+      deviceType:
+        type: string
+      granularity:
+        type: integer
+      msg:
+        type: string
+      requestId:
+        type: string
+      success:
+        type: boolean
+    type: object
+  deye.DeviceLatestData:
+    properties:
+      collectionTime:
+        type: integer
+      dataList:
+        items:
+          $ref: '#/definitions/deye.DataPoint'
+        type: array
+      deviceSn:
+        type: string
+      deviceState:
+        description: 1 online, 2 alert, 3 offline
+        type: integer
+      deviceType:
+        type: string
+    type: object
+  deye.DeviceLatestResponse:
+    properties:
+      code:
+        type: string
+      deviceDataList:
+        items:
+          $ref: '#/definitions/deye.DeviceLatestData'
+        type: array
+      msg:
+        type: string
+      requestId:
+        type: string
+      success:
+        type: boolean
+    type: object
+  deye.DeviceListItem:
+    properties:
+      collectionTime:
+        type: integer
+      connectStatus:
+        description: 0 offline, 1 online, 2 alert
+        type: integer
+      deviceId:
+        type: integer
+      deviceSn:
+        type: string
+      deviceType:
+        type: string
+      parentId:
+        type: integer
+      productId:
+        description: 0_5412_1 — 3ф HV гибрид, 0_5411_1 — 3ф LV, 0_5407_1 — 1ф гибрид
+        type: string
+      stationId:
+        type: integer
+    type: object
+  deye.DeviceListResponse:
+    properties:
+      code:
+        type: string
+      deviceList:
+        items:
+          $ref: '#/definitions/deye.DeviceDetailItem'
+        type: array
+      msg:
+        type: string
+      requestId:
+        type: string
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
+  deye.DeviceRegisterRequest:
+    properties:
+      deviceSn:
+        type: string
+      gatewaySn:
+        type: string
+      stationId:
+        type: integer
+    type: object
+  deye.DeviceRegisterResponse:
+    properties:
+      code:
+        type: string
+      gatewayId:
+        type: integer
+      msg:
+        type: string
+      requestId:
+        type: string
+      success:
+        type: boolean
+    type: object
+  deye.DynamicConfigResponse:
+    properties:
+      code:
+        type: string
+      gridChargeAction:
+        type: string
+      gridChargeAmpere:
+        type: integer
+      maxChargeCurrent:
+        type: integer
+      maxDischargeCurrent:
+        type: integer
+      maxSellPower:
+        type: integer
+      maxSolarPower:
+        type: integer
+      msg:
+        type: string
+      requestId:
+        type: string
+      solarSellAction:
+        type: string
+      success:
+        type: boolean
+      timeUseSettingItems:
+        items:
+          $ref: '#/definitions/deye.TimeUseItem'
+        type: array
+      touAction:
+        type: string
+      touDays:
+        items:
+          type: string
+        type: array
+      workMode:
+        type: string
+      zeroExportPower:
+        type: integer
+    type: object
+  deye.LoggerRequest:
+    properties:
+      deviceSns:
+        description: до 10 за раз
+        items:
+          type: string
+        type: array
+    type: object
+  deye.MeasurePointsResponse:
+    properties:
+      code:
+        type: string
+      deviceSn:
+        type: string
+      deviceType:
+        type: string
+      measurePoints:
+        items:
+          type: string
+        type: array
+      msg:
+        type: string
+      productId:
+        type: string
+      requestId:
+        type: string
+      stationId:
+        type: integer
+      success:
+        type: boolean
+      timeZone:
+        type: string
+    type: object
+  deye.OrderResponse:
+    properties:
+      analysisResult:
+        type: string
+      code:
+        type: string
+      createBy:
+        type: integer
+      createTime:
+        type: string
+      deviceTimezone:
+        type: string
+      error:
+        type: string
+      msg:
+        type: string
+      orderId:
+        type: integer
+      orderResult:
+        type: string
+      requestId:
+        type: string
+      status:
+        type: integer
+      success:
+        type: boolean
+      updateTime:
+        type: string
+    type: object
+  deye.Region:
+    properties:
+      countryCode:
+        description: ISO 3166-1 alpha-2
+        type: string
+      level1:
+        type: integer
+      level2:
+        type: integer
+      level3:
+        type: integer
+      level4:
+        type: integer
+      level5:
+        type: integer
+      nationId:
+        type: integer
+      timezone:
+        description: IANA, например Asia/Bishkek
+        type: string
+    type: object
+  deye.StationAlertListResponse:
+    properties:
+      code:
+        type: string
+      msg:
+        type: string
+      requestId:
+        type: string
+      stationAlertItems:
+        items:
+          $ref: '#/definitions/deye.AlertItem'
+        type: array
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
+  deye.StationCreateRequest:
+    properties:
+      constructionCost:
+        type: number
+      contactPhone:
+        type: string
+      currency:
+        description: ISO 4217, например KGS / USD
+        type: string
+      gridInterconnectionType:
+        description: DISTRIBUTED_FULLY, EXCESS, OFF_GRID, BATTERY_BACKUP, ...
+        type: string
+      installationAzimuthAngle:
+        type: number
+      installationTiltAngle:
+        type: number
+      installedCapacity:
+        type: number
+      locationAddress:
+        type: string
+      locationLat:
+        type: number
+      locationLng:
+        type: number
+      mergeElectricPrice:
+        type: number
+      name:
+        type: string
+      ownerCompany:
+        type: string
+      ownerName:
+        type: string
+      region:
+        $ref: '#/definitions/deye.Region'
+      startOperatingTime:
+        type: string
+      stationImage:
+        type: string
+      type:
+        description: HOUSE_ROOF, COMMERCIAL_ROOF, INDUSTRIAL_ROOF, GROUND
+        type: string
+    type: object
+  deye.StationCreateResponse:
+    properties:
+      code:
+        type: string
+      id:
+        type: integer
+      msg:
+        type: string
+      requestId:
+        type: string
+      success:
+        type: boolean
+    type: object
+  deye.StationDataItem:
+    properties:
+      batteryPower:
+        type: number
+      batterySOC:
+        type: number
+      chargePower:
+        type: number
+      chargeRatio:
+        type: number
+      chargeValue:
+        type: number
+      consumptionDischargeRatio:
+        type: number
+      consumptionPower:
+        type: number
+      consumptionRatio:
+        type: number
+      consumptionValue:
+        type: number
+      cpr:
+        type: number
+      day:
+        type: integer
+      dischargePower:
+        type: number
+      dischargeValue:
+        type: number
+      fullPowerHours:
+        type: number
+      generationPower:
+        type: number
+      generationRatio:
+        type: number
+      generationValue:
+        type: number
+      gridPower:
+        type: number
+      gridRatio:
+        type: number
+      gridValue:
+        type: number
+      irradiate:
+        type: number
+      irradiateIntensity:
+        type: number
+      month:
+        type: integer
+      pr:
+        type: number
+      purchasePower:
+        type: number
+      purchaseRatio:
+        type: number
+      purchaseValue:
+        type: number
+      theoreticalGeneration:
+        type: number
+      timeStamp:
+        type: string
+      wirePower:
+        type: number
+      year:
+        type: integer
+    type: object
+  deye.StationDeviceResponse:
+    properties:
+      code:
+        type: string
+      deviceListItems:
+        items:
+          $ref: '#/definitions/deye.DeviceListItem'
+        type: array
+      msg:
+        type: string
+      requestId:
+        type: string
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
+  deye.StationHistoryPowerRequest:
+    properties:
+      endTimestamp:
+        type: integer
+      startTimestamp:
+        type: integer
+      stationId:
+        type: integer
+    type: object
+  deye.StationHistoryRequest:
+    properties:
+      endAt:
+        type: string
+      granularity:
+        type: integer
+      startAt:
+        type: string
+      stationId:
+        type: integer
+    type: object
+  deye.StationHistoryResponse:
+    properties:
+      code:
+        type: string
+      msg:
+        type: string
+      requestId:
+        type: string
+      stationDataItems:
+        items:
+          $ref: '#/definitions/deye.StationDataItem'
+        type: array
+      success:
+        type: boolean
+      total:
+        type: integer
+    type: object
+  deye.StationLatestResponse:
+    properties:
+      batteryPower:
+        type: number
+      batterySOC:
+        type: number
+      chargePower:
+        type: number
+      code:
+        type: string
+      consumptionPower:
+        type: number
+      dischargePower:
+        type: number
+      generationPower:
+        type: number
+      gridPower:
+        type: number
+      irradiateIntensity:
+        type: number
+      lastUpdateTime:
+        type: string
+      msg:
+        type: string
+      purchasePower:
+        type: number
+      requestId:
+        type: string
+      success:
+        type: boolean
+      wirePower:
+        type: number
+    type: object
+  deye.TimeUseItem:
+    properties:
+      enableGeneration:
+        type: boolean
+      enableGridCharge:
+        type: boolean
+      enableSell:
+        type: boolean
+      power:
+        type: integer
+      soc:
+        type: integer
+      time:
+        type: string
+      voltage:
+        type: integer
+    type: object
+  services.DeyeImportRequest:
+    properties:
+      client:
+        type: integer
+      device_sn:
+        type: string
+      has_generator:
+        type: boolean
+      invert_battery:
+        type: boolean
+      invert_grid:
+        type: boolean
+      name:
+        type: string
+      sections:
+        items:
+          type: string
+        type: array
+      site:
+        type: string
+      station_id:
+        type: integer
+      station_power_scale:
+        type: number
+    type: object
+  services.LoginResult:
+    properties:
+      access:
+        type: string
+      refresh:
+        type: string
+      user:
+        $ref: '#/definitions/types.Me'
+    type: object
+  types.Agent:
+    properties:
+      capabilities:
+        additionalProperties: {}
+        type: object
+      client:
+        type: integer
+      client_name:
+        type: string
+      created_at:
+        type: string
+      hostname:
+        type: string
+      id:
+        type: integer
+      ip:
+        type: string
+      is_active:
+        type: boolean
+      last_seen:
+        type: string
+      local_ip:
+        type: string
+      name:
+        type: string
+      online:
+        type: boolean
+      platform:
+        type: string
+      token_hint:
+        type: string
+      version:
+        type: string
+    type: object
+  types.AgentTask:
+    properties:
+      agent:
+        type: integer
+      agent_online:
+        type: boolean
+      created_at:
+        type: string
+      device:
+        type: integer
+      error:
+        type: string
+      finished_at:
+        type: string
+      found:
+        items:
+          $ref: '#/definitions/types.FoundDevice'
+        type: array
+      id:
+        type: integer
+      kind:
+        type: string
+      log:
+        type: string
+      method:
+        type: string
+      params:
+        additionalProperties: {}
+        type: object
+      result:
+        additionalProperties: {}
+        type: object
+      started_at:
+        type: string
+      status:
+        type: string
+    type: object
+  types.AgentWrite:
+    properties:
+      client:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+    type: object
+  types.Alert:
+    properties:
+      client_id:
+        type: integer
+      client_name:
+        type: string
+      created_at:
+        type: string
+      device:
+        type: integer
+      device_code:
+        type: string
+      device_type:
+        type: string
+      id:
+        type: integer
+      is_read:
+        type: boolean
+      kind:
+        type: string
+      text:
+        type: string
+    type: object
+  types.ClientModemShort:
+    properties:
+      has_generator:
+        type: boolean
+      id:
+        type: integer
+      last_seen:
+        type: string
+      name:
+        type: string
+      serial:
+        type: string
+      site:
+        type: string
+      status:
+        type: string
+    type: object
+  types.ClientView:
+    properties:
+      address:
+        type: string
+      created_at:
+        type: string
+      devices_count:
+        type: integer
+      id:
+        type: integer
+      modems:
+        items:
+          $ref: '#/definitions/types.ClientModemShort'
+        type: array
+      name:
+        type: string
+      online_count:
+        type: integer
+      phone:
+        type: string
+      user:
+        type: integer
+      username:
+        type: string
+    type: object
+  types.ClientWrite:
+    properties:
+      address:
+        type: string
+      has_generator:
+        type: boolean
+      login_password:
+        type: string
+      login_username:
+        type: string
+      modem_name:
+        type: string
+      modem_serial:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+  types.DeviceView:
+    properties:
+      client:
+        type: integer
+      client_name:
+        type: string
+      created_at:
+        type: string
+      device_id:
+        type: string
+      device_type:
+        type: string
+      id:
+        type: integer
+      last_data:
+        additionalProperties: {}
+        type: object
+      last_seen:
+        type: string
+      modem:
+        type: integer
+      modem_serial:
+        type: string
+      name:
+        type: string
+      serial_number:
+        type: string
+      status:
+        type: string
+      type_display:
+        type: string
+    type: object
+  types.DeviceWrite:
+    properties:
+      client:
+        type: integer
+      device_id:
+        type: string
+      device_type:
+        type: string
+      modem:
+        type: integer
+      name:
+        type: string
+      serial_number:
+        type: string
+    type: object
+  types.FoundDevice:
+    properties:
+      agent:
+        type: integer
+      agent_name:
+        type: string
+      bt_address:
+        type: string
+      check_result:
+        additionalProperties: {}
+        type: object
+      connection_type:
+        type: string
+      details:
+        additionalProperties: {}
+        type: object
+      device_kind:
+        type: string
+      first_seen:
+        type: string
+      id:
+        type: integer
+      ip:
+        type: string
+      key:
+        type: string
+      kind_display:
+        type: string
+      last_seen:
+        type: string
+      mac:
+        type: string
+      manufacturer:
+        type: string
+      model:
+        type: string
+      modem:
+        type: integer
+      modem_client:
+        type: integer
+      modem_serial:
+        type: string
+      name:
+        type: string
+      protocols:
+        items:
+          type: string
+        type: array
+      rssi:
+        type: integer
+      serial:
+        type: string
+      source:
+        type: string
+      status:
+        type: string
+      status_display:
+        type: string
+      task:
+        type: integer
+    type: object
+  types.Me:
+    properties:
+      can_edit:
+        type: boolean
+      can_view_all:
+        type: boolean
+      client:
+        $ref: '#/definitions/types.MeClient'
+      client_id:
+        type: integer
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: integer
+      last_name:
+        type: string
+      phone:
+        type: string
+      position:
+        type: string
+      role:
+        type: string
+      role_display:
+        type: string
+      username:
+        type: string
+    type: object
+  types.MeClient:
+    properties:
+      address:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+  types.ModemView:
+    properties:
+      agent:
+        description: Если данные читает локальный агент (а не модем шлёт MQTT сам)
+        type: integer
+      agent_name:
+        type: string
+      client:
+        type: integer
+      client_name:
+        type: string
+      connection:
+        additionalProperties: {}
+        description: |-
+          Как читаются данные: {"protocol": "solarman_v5", "host": ..., "port": 8899, ...}
+          или {"protocol": "deye_cloud", "account_id": 1, "device_sn": "...", "station_id": 322}
+        type: object
+      created_at:
+        type: string
+      devices_count:
+        type: integer
+      has_generator:
+        type: boolean
+      id:
+        type: integer
+      last_seen:
+        type: string
+      name:
+        type: string
+      sections:
+        description: Какие разделы есть у станции (пусто = стандартный набор)
+        items:
+          type: string
+        type: array
+      serial:
+        type: string
+      site:
+        type: string
+      status:
+        type: string
+    type: object
+  types.ModemWrite:
+    properties:
+      client:
+        type: integer
+      has_generator:
+        type: boolean
+      name:
+        type: string
+      serial:
+        type: string
+      site:
+        type: string
+    type: object
+  types.Telemetry:
+    properties:
+      battery_percent:
+        type: number
+      current:
+        type: number
+      device:
+        type: integer
+      device_id:
+        type: string
+      device_type:
+        type: string
+      error:
+        type: string
+      id:
+        type: integer
+      power:
+        type: number
+      temperature:
+        type: number
+      timestamp:
+        type: string
+      voltage:
+        type: number
+    type: object
+  types.UserView:
+    properties:
+      client_id:
+        description: ClientID — id клиента, к которому привязан аккаунт (заполняется
+          join'ом).
+        type: integer
+      date_joined:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      last_login:
+        type: string
+      last_name:
+        type: string
+      phone:
+        type: string
+      position:
+        type: string
+      role:
+        type: string
+      role_display:
+        type: string
+      username:
+        type: string
+    type: object
+  types.UserWrite:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      is_active:
+        type: boolean
+      last_name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      position:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  types.VendorAccount:
+    properties:
+      app_id:
+        type: string
+      base_url:
+        type: string
+      company_id:
+        type: integer
+      country_code:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      last_error:
+        type: string
+      last_sync_at:
+        type: string
+      mobile:
+        type: string
+      modems_count:
+        type: integer
+      name:
+        type: string
+      username:
+        type: string
+      vendor:
+        type: string
+    type: object
+  types.VendorAccountWrite:
+    properties:
+      app_id:
+        type: string
+      app_secret:
+        type: string
+      base_url:
+        type: string
+      company_id:
+        type: integer
+      country_code:
+        type: string
+      email:
+        type: string
+      is_active:
+        type: boolean
+      mobile:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+host: localhost:8000
+info:
+  contact: {}
+  description: 'Мониторинг солнечных станций: панели → инвертор → батарея → генератор
+    → сеть → нагрузка. Данные модемов (MQTT), локальных агентов и Deye Cloud.'
+  title: Ата Энерго API
+  version: "1.0"
+paths:
+  /agent/hello/:
+    post:
+      parameters:
+      - description: Токен агента
+        in: header
+        name: X-Agent-Token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Агент сообщает о себе (hostname, platform, version, local_ip, capabilities)
+      tags:
+      - Agent
+  /agent/poll/:
+    get:
+      parameters:
+      - description: Токен агента
+        in: header
+        name: X-Agent-Token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Новые задачи и устройства, которые надо опрашивать
+      tags:
+      - Agent
+  /agent/tasks/{id}/finish/:
+    post:
+      parameters:
+      - description: Токен агента
+        in: header
+        name: X-Agent-Token
+        required: true
+        type: string
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      summary: Итог задачи {status, error, result, found}
+      tags:
+      - Agent
+  /agent/tasks/{id}/progress/:
+    post:
+      parameters:
+      - description: Токен агента
+        in: header
+        name: X-Agent-Token
+        required: true
+        type: string
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      summary: Промежуточный результат задачи {log, found}
+      tags:
+      - Agent
+  /agent/telemetry/:
+    post:
+      parameters:
+      - description: Токен агента
+        in: header
+        name: X-Agent-Token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      summary: Показания, прочитанные агентом {serial, payload} -> обычный мониторинг
+      tags:
+      - Agent
+  /agents/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.Agent'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Агенты поиска
+      tags:
+      - Discovery
+    post:
+      parameters:
+      - description: Агент
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.AgentWrite'
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать агента. Ответ содержит token и command (показываются один раз)
+      tags:
+      - Discovery
+  /agents/{id}/:
+    delete:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Удалить агента
+      tags:
+      - Discovery
+    get:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.Agent'
+      security:
+      - BearerAuth: []
+      summary: Агент
+      tags:
+      - Discovery
+    patch:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.AgentWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.Agent'
+      security:
+      - BearerAuth: []
+      summary: Изменить агента (name, client, is_active)
+      tags:
+      - Discovery
+  /agents/{id}/new_token/:
+    post:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Выдать агенту новый токен (старый перестаёт работать)
+      tags:
+      - Discovery
+  /alerts/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.Alert'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Аварии (200 последних). ?unread=1&client=ID
+      tags:
+      - Alerts
+  /alerts/{id}/:
+    get:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.Alert'
+      security:
+      - BearerAuth: []
+      summary: Авария
+      tags:
+      - Alerts
+  /alerts/{id}/read/:
+    post:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.Alert'
+      security:
+      - BearerAuth: []
+      summary: Отметить аварию прочитанной (сотрудники)
+      tags:
+      - Alerts
+  /alerts/read_all/:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отметить все аварии прочитанными (сотрудники)
+      tags:
+      - Alerts
+  /auth/login/:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Логин и пароль
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.LoginResult'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.DetailResponse'
+      summary: 'Вход: {username, password} -> {access, refresh, user}'
+      tags:
+      - Auth
+  /auth/refresh/:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: refresh-токен
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.refreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.DetailResponse'
+      summary: Новый access-токен по refresh-токену
+      tags:
+      - Auth
+  /clients/:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.ClientView'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: 'Клиенты (+ модемы, количество устройств). Поиск: ?search='
+      tags:
+      - Clients
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Клиент
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.ClientWrite'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/types.ClientView'
+      security:
+      - BearerAuth: []
+      summary: Создать клиента (+ логин для входа, + модем — устройства создаются
+        сами)
+      tags:
+      - Clients
+  /clients/{id}/:
+    delete:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Удалить клиента вместе с его аккаунтом
+      tags:
+      - Clients
+    get:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ClientView'
+      security:
+      - BearerAuth: []
+      summary: Клиент
+      tags:
+      - Clients
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.ClientWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ClientView'
+      security:
+      - BearerAuth: []
+      summary: Изменить клиента, его логин и основной модем
+      tags:
+      - Clients
+  /clients/{id}/devices/:
+    get:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.DeviceView'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Всё оборудование клиента
+      tags:
+      - Clients
+  /devices/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.DeviceView'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: 'Устройства (каждый видит своё). Фильтры: ?client=ID ?type=inverter
+        ?status=online'
+      tags:
+      - Devices
+    post:
+      parameters:
+      - description: Устройство
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.DeviceWrite'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/types.DeviceView'
+      security:
+      - BearerAuth: []
+      summary: Создать устройство (admin, it_head)
+      tags:
+      - Devices
+  /devices/{id}/:
+    delete:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Удалить устройство (admin, it_head)
+      tags:
+      - Devices
+    get:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.DeviceView'
+      security:
+      - BearerAuth: []
+      summary: Устройство (чужое — 404)
+      tags:
+      - Devices
+    patch:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.DeviceWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.DeviceView'
+      security:
+      - BearerAuth: []
+      summary: Изменить устройство (admin, it_head)
+      tags:
+      - Devices
+  /devices/{id}/history/:
+    get:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 2026-01-31T10:00:00
+        in: query
+        name: from
+        type: string
+      - description: 2026-01-31T12:00:00
+        in: query
+        name: to
+        type: string
+      - description: 10..5000
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: История показаний для графиков (?from=&to=&limit=500; по умолчанию
+        24 ч)
+      tags:
+      - Devices
+  /deye/accounts/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.VendorAccount'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Аккаунты Deye Cloud
+      tags:
+      - Deye
+    post:
+      parameters:
+      - description: Аккаунт
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.VendorAccountWrite'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/types.VendorAccount'
+      security:
+      - BearerAuth: []
+      summary: 'Добавить аккаунт Deye: app_id, app_secret, email|username|mobile(+country_code),
+        password (хранится только SHA-256), company_id (бизнес), base_url (EU по умолчанию)'
+      tags:
+      - Deye
+  /deye/accounts/{id}/:
+    delete:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Удалить аккаунт Deye
+      tags:
+      - Deye
+    get:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.VendorAccount'
+      security:
+      - BearerAuth: []
+      summary: Аккаунт Deye Cloud
+      tags:
+      - Deye
+    patch:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.VendorAccountWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.VendorAccount'
+      security:
+      - BearerAuth: []
+      summary: Изменить аккаунт Deye (пустой password — не менять)
+      tags:
+      - Deye
+  /deye/accounts/{id}/devices/:
+    get:
+      parameters:
+      - description: ID аккаунта
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.DeviceListResponse'
+      security:
+      - BearerAuth: []
+      summary: Все устройства аккаунта (бизнес-аккаунт), ?page&size (до 200)
+      tags:
+      - Deye
+  /deye/accounts/{id}/devices/register/:
+    post:
+      parameters:
+      - description: ID аккаунта
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Логгер
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/deye.DeviceRegisterRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.DeviceRegisterResponse'
+      security:
+      - BearerAuth: []
+      summary: Добавить логгер в станцию {deviceSn, gatewaySn, stationId}
+      tags:
+      - Deye
+  /deye/accounts/{id}/import/:
+    post:
+      parameters:
+      - description: ID аккаунта
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Импорт
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.DeyeImportRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/types.ModemView'
+      security:
+      - BearerAuth: []
+      summary: Подключить устройство Deye как модем клиента {device_sn, station_id,
+        client, site, name, has_generator, sections, invert_battery, invert_grid,
+        station_power_scale}
+      tags:
+      - Deye
+  /deye/accounts/{id}/loggers/{action}/:
+    post:
+      parameters:
+      - description: ID аккаунта
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: add | delete
+        in: path
+        name: action
+        required: true
+        type: string
+      - description: SN логгеров
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/deye.LoggerRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.BaseResponse'
+      security:
+      - BearerAuth: []
+      summary: 'Добавить (add) или убрать (delete) логгеры бизнес-аккаунта {deviceSns:
+        [...]} — до 10 за раз'
+      tags:
+      - Deye
+  /deye/accounts/{id}/stations/:
+    get:
+      parameters:
+      - description: ID аккаунта
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Станции аккаунта (?page&size; with_devices=1 — вместе с устройствами,
+        device_type=INVERTER)
+      tags:
+      - Deye
+  /deye/accounts/{id}/stations/{sid}/:
+    get:
+      parameters:
+      - description: ID аккаунта
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID станции Deye
+        in: path
+        name: sid
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Детали и текущие данные станции
+      tags:
+      - Deye
+  /deye/accounts/{id}/stations/{sid}/devices/:
+    get:
+      parameters:
+      - description: ID аккаунта
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID станции Deye
+        in: path
+        name: sid
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.StationDeviceResponse'
+      security:
+      - BearerAuth: []
+      summary: Устройства станции
+      tags:
+      - Deye
+  /deye/accounts/{id}/stations/create/:
+    post:
+      parameters:
+      - description: ID аккаунта
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Станция
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/deye.StationCreateRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.StationCreateResponse'
+      security:
+      - BearerAuth: []
+      summary: Создать станцию в Deye Cloud
+      tags:
+      - Deye
+  /deye/accounts/{id}/test/:
+    post:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.AccountInfoResponse'
+      security:
+      - BearerAuth: []
+      summary: Проверить вход в Deye Cloud (токен + организация аккаунта)
+      tags:
+      - Deye
+  /deye/sync/:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Опросить облака производителей прямо сейчас
+      tags:
+      - Deye
+  /discovery/browser-bluetooth/:
+    post:
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/types.FoundDevice'
+      security:
+      - BearerAuth: []
+      summary: Сохранить устройство, найденное в браузере через Web Bluetooth {id,
+        name, services, connected, error}
+      tags:
+      - Discovery
+  /discovery/devices/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.FoundDevice'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Все найденные устройства (новые сверху, до 500). ?agent=ID
+      tags:
+      - Discovery
+  /discovery/devices/{id}/connect/:
+    post:
+      parameters:
+      - description: ID устройства
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Подключить проверенное устройство к объекту клиента {client, site,
+        name, has_generator, poll_interval, invert_battery, invert_grid}
+      tags:
+      - Discovery
+  /discovery/devices/{id}/probe/:
+    post:
+      parameters:
+      - description: ID устройства
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/types.AgentTask'
+      security:
+      - BearerAuth: []
+      summary: Проверить, можно ли прочитать показания (задача агенту). Можно передать
+        protocol, port, unit_id, logger_serial, profile, invert_battery, invert_grid
+      tags:
+      - Discovery
+  /discovery/devices/clear/:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить из списка найденные устройства, которые не подключены
+      tags:
+      - Discovery
+  /discovery/scan/:
+    post:
+      parameters:
+      - description: Задача
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.scanRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/types.AgentTask'
+      security:
+      - BearerAuth: []
+      summary: 'Начать поиск: method = wifi | bluetooth | all'
+      tags:
+      - Discovery
+  /discovery/tasks/{id}/:
+    get:
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.AgentTask'
+      security:
+      - BearerAuth: []
+      summary: Ход поиска и найденные устройства
+      tags:
+      - Discovery
+  /me/:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.Me'
+      security:
+      - BearerAuth: []
+      summary: Данные и роль текущего пользователя
+      tags:
+      - Auth
+  /modems/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.ModemView'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: 'Модемы (каждый видит своё). Фильтры: ?client=ID ?search=SN'
+      tags:
+      - Modems
+    post:
+      parameters:
+      - description: Модем
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.ModemWrite'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/types.ModemView'
+      security:
+      - BearerAuth: []
+      summary: Создать модем {client, serial, name, has_generator, site} — устройства
+        создаются сами
+      tags:
+      - Modems
+  /modems/{id}/:
+    delete:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Удалить модем вместе с устройствами
+      tags:
+      - Modems
+    get:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ModemView'
+      security:
+      - BearerAuth: []
+      summary: Модем
+      tags:
+      - Modems
+    patch:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.ModemWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ModemView'
+      security:
+      - BearerAuth: []
+      summary: Изменить модем (смена SN переименует устройства)
+      tags:
+      - Modems
+  /modems/{id}/deye/alerts/:
+    get:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.DeviceAlertListResponse'
+      security:
+      - BearerAuth: []
+      summary: Аварии устройства в Deye Cloud (?from&to — unix или даты, по умолчанию
+        7 дней; ≤30 дней), ?page&size
+      tags:
+      - Deye
+  /modems/{id}/deye/config/:
+    get:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 'Настройки инвертора: батарея, режим работы, TOU (?part=battery|system|tou
+        — только одна часть)'
+      tags:
+      - Deye
+  /modems/{id}/deye/control/{command}/:
+    post:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Команда
+        in: path
+        name: command
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.ControlResponse'
+      security:
+      - BearerAuth: []
+      summary: 'Команда инвертору (admin, it_head). command: battery-mode, battery-parameter,
+        battery-type, modbus, peak-shaving, smartload, energy-pattern, limit-control,
+        power, solar-sell, tou-switch, tou, work-mode, dynamic'
+      tags:
+      - Deye
+  /modems/{id}/deye/dynamic/read/:
+    post:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.ControlResponse'
+      security:
+      - BearerAuth: []
+      summary: Запросить чтение текущих настроек (затем GET .../dynamic/result/{orderId}/)
+      tags:
+      - Deye
+  /modems/{id}/deye/dynamic/result/{orderId}/:
+    get:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: orderId
+        in: path
+        name: orderId
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.DynamicConfigResponse'
+      security:
+      - BearerAuth: []
+      summary: Результат чтения настроек
+      tags:
+      - Deye
+  /modems/{id}/deye/history-raw/:
+    post:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Параметры (deviceSn подставляется сам)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/deye.DeviceHistoryRawRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.DeviceHistoryResponse'
+      security:
+      - BearerAuth: []
+      summary: История по точкам {startTimestamp, endTimestamp (≤5 дней), measurePoints}
+      tags:
+      - Deye
+  /modems/{id}/deye/history/:
+    post:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Параметры (deviceSn подставляется сам)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/deye.DeviceHistoryRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.DeviceHistoryResponse'
+      security:
+      - BearerAuth: []
+      summary: 'История устройства {granularity: 1..4, startAt, endAt, measurePoints}'
+      tags:
+      - Deye
+  /modems/{id}/deye/latest/:
+    get:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.DeviceLatestResponse'
+      security:
+      - BearerAuth: []
+      summary: Сырые последние показания устройства Deye
+      tags:
+      - Deye
+  /modems/{id}/deye/measure-points/:
+    get:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.MeasurePointsResponse'
+      security:
+      - BearerAuth: []
+      summary: Доступные точки измерения устройства
+      tags:
+      - Deye
+  /modems/{id}/deye/orders/{orderId}/:
+    get:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: orderId
+        in: path
+        name: orderId
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.OrderResponse'
+      security:
+      - BearerAuth: []
+      summary: 'Результат команды (status: 0 ждёт, 100 отправляется, 500 ошибка, 666
+        выполнено)'
+      tags:
+      - Deye
+  /modems/{id}/deye/station-alerts/:
+    get:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.StationAlertListResponse'
+      security:
+      - BearerAuth: []
+      summary: Аварии станции в Deye Cloud (?from&to, по умолчанию 30 дней; ≤180 дней),
+        ?page&size
+      tags:
+      - Deye
+  /modems/{id}/deye/station-history-power/:
+    post:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Параметры (stationId подставляется сам)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/deye.StationHistoryPowerRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.StationHistoryResponse'
+      security:
+      - BearerAuth: []
+      summary: История мощностей станции {startTimestamp, endTimestamp} (≤12 месяцев)
+      tags:
+      - Deye
+  /modems/{id}/deye/station-history/:
+    post:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Параметры (stationId подставляется сам)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/deye.StationHistoryRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.StationHistoryResponse'
+      security:
+      - BearerAuth: []
+      summary: 'История станции {granularity: 1 кадры/2 дни/3 месяцы/4 годы, startAt,
+        endAt}'
+      tags:
+      - Deye
+  /modems/{id}/deye/station/:
+    get:
+      parameters:
+      - description: ID модема
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.StationLatestResponse'
+      security:
+      - BearerAuth: []
+      summary: Текущие данные станции Deye
+      tags:
+      - Deye
+  /my/devices/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.DeviceView'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Устройства текущего клиента (роль user)
+      tags:
+      - Devices
+  /my/telemetry/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.Telemetry'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Последние показания своих устройств (роль user). ?limit=100 ?device=ID
+      tags:
+      - Devices
+  /users/:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.UserView'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Пользователи (?role=, ?staff=1, ?search=)
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Пользователь
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.UserWrite'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/types.UserView'
+      security:
+      - BearerAuth: []
+      summary: Создать пользователя (пароль минимум 6 символов)
+      tags:
+      - Users
+  /users/{id}/:
+    delete:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Удалить пользователя (себя удалить нельзя)
+      tags:
+      - Users
+    get:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.UserView'
+      security:
+      - BearerAuth: []
+      summary: Пользователь
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.UserWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.UserView'
+      security:
+      - BearerAuth: []
+      summary: Изменить пользователя (PATCH/PUT). Если передан password — меняет пароль
+      tags:
+      - Users
+securityDefinitions:
+  BearerAuth:
+    description: Enter "Bearer {token}"
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

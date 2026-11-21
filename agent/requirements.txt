@@ -1,0 +1,4 @@
+# Библиотеки локального агента "Ата Энерго"
+zeroconf>=0.132        # поиск по mDNS (Bonjour)
+pysolarmanv5>=3.0      # протокол Solarman V5 (Wi-Fi логгеры Deye, Sofar, Solis и др., порт 8899)
+bleak>=0.22            # поиск и подключение Bluetooth LE (Windows, macOS, Linux)

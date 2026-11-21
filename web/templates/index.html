@@ -1,0 +1,82 @@
+<!doctype html>
+<!--
+  Единственная HTML-страница сайта "Ата Энерго".
+  Вся логика — в static/js (JavaScript-модули), данные берутся из /api/ и WebSocket.
+-->
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <title>Ата Энерго — мониторинг</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='8' fill='%23f5b301'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script>
+    // Применяем сохранённую тему до отрисовки, чтобы не было "мигания"
+    try { document.documentElement.dataset.theme = localStorage.getItem('ata_theme') || 'dark'; } catch (e) {}
+  </script>
+</head>
+<body>
+  <!-- ===== Экран входа ===== -->
+  <section id="login-screen" class="login hidden">
+    <form id="login-form" class="login-card" autocomplete="on">
+      <div class="brand brand-lg">
+        <span class="brand-logo"></span>
+        <div><b>Ата Энерго</b><small>Мониторинг солнечных станций</small></div>
+      </div>
+      <label>Логин<input name="username" required autocomplete="username" autofocus></label>
+      <label>Пароль<input name="password" type="password" required autocomplete="current-password"></label>
+      <div id="login-error" class="form-error"></div>
+      <button class="btn btn-primary btn-block" type="submit">Войти</button>
+      {{if .ShowDemo}}
+      <div class="demo-hint">
+        <b>Тестовые входы:</b>
+        <button type="button" data-demo="admin:admin123">admin</button>
+        <button type="button" data-demo="ithead:ithead123">ithead</button>
+        <button type="button" data-demo="dispatcher:disp123">dispatcher</button>
+        <button type="button" data-demo="client1:client123">client1</button>
+      </div>
+      {{end}}
+    </form>
+  </section>
+
+  <!-- ===== Приложение ===== -->
+  <div id="app" class="layout hidden">
+    <aside id="sidebar" class="sidebar">
+      <div class="brand">
+        <span class="brand-logo"></span>
+        <div><b>Ата Энерго</b><small>мониторинг</small></div>
+      </div>
+      <nav id="nav" class="nav"></nav>
+      <div class="sidebar-bottom">
+        <div id="user-box" class="user-box"></div>
+        <div class="sidebar-actions">
+          <button id="theme-btn" class="btn btn-ghost btn-sm" type="button">Тема</button>
+          <button id="logout-btn" class="btn btn-ghost btn-sm" type="button">Выйти</button>
+        </div>
+      </div>
+    </aside>
+    <div id="overlay" class="overlay"></div>
+
+    <div class="main">
+      <header class="topbar">
+        <button id="burger" class="burger" type="button" aria-label="Меню"><span></span></button>
+        <h1 id="page-title">…</h1>
+        <div class="topbar-right">
+          <span id="ws-status" class="live" title="Связь в реальном времени"><i></i><span>…</span></span>
+          <a id="bell" href="#/alerts" class="bell" title="Аварии">
+            <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+            <b id="bell-count" class="hidden">0</b>
+          </a>
+        </div>
+      </header>
+      <main id="view" class="view"></main>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toasts" class="toasts"></div>
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

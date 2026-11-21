@@ -1,0 +1,81 @@
+# Ата Энерго: сервер (API + сайт + WebSocket), PostgreSQL, Redis, MQTT-брокер.
+#
+#   docker compose up -d --build     # собрать и запустить
+#   docker compose logs -f app       # логи
+#   docker compose down              # остановить (данные БД сохраняются в volume)
+#
+# Сайт: http://localhost:8000   Swagger: http://localhost:8000/swagger/index.html
+# Настройки — в .env (пример: .env.example).
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+      target: production
+    container_name: ata-energo
+    restart: always
+    env_file:
+      - .env
+    environment:
+      # адреса сервисов внутри сети compose (перекрывают значения из .env)
+      DATABASE_URL: postgres://${POSTGRES_USER:-ata}:${POSTGRES_PASSWORD:-ata}@database:5432/${POSTGRES_DB:-ata_energo}?sslmode=disable
+      REDIS_URL: cache:6379
+      MQTT_HOST: mqtt
+      MQTT_PORT: "1883"
+      SERVER_PORT: "8000"
+      WEB_DIR: /usr/bin/app/web
+    ports:
+      - "127.0.0.1:${APP_PORT:-8000}:8000"   # только локально; на сервере перед ним Nginx (+ /ws/ с Upgrade)
+    depends_on:
+      database:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      mqtt:
+        condition: service_started
+    networks:
+      - ata-energo-network
+
+  database:
+    image: postgres:16-alpine
+    container_name: ata-energo-database
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ata}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ata}
+      POSTGRES_DB: ${POSTGRES_DB:-ata_energo}
+      TZ: ${TIME_ZONE:-Asia/Bishkek}
+    volumes:
+      - postgres-data-main:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ata} -d ${POSTGRES_DB:-ata_energo}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - ata-energo-network
+
+  cache:
+    image: redis:7-alpine
+    container_name: ata-energo-redis
+    restart: always
+    networks:
+      - ata-energo-network
+
+  # MQTT-брокер для модемов (топик inverter/<SN>/data). Порт 1883 открыт наружу — модемы шлют сюда.
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: ata-energo-mqtt
+    command: mosquitto -c /mosquitto-no-auth.conf
+    restart: always
+    ports:
+      - "1883:1883"
+    networks:
+      - ata-energo-network
+
+volumes:
+  postgres-data-main:
+
+networks:
+  ata-energo-network:   # compose создаёт сам, не external

@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+node_modules
+bin/
+tmp/
+_artifacts/
+templates/
+_qr-parking/
+*.docx
+*.zip
