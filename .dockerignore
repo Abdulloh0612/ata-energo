@@ -8,3 +8,5 @@ templates/
 _qr-parking/
 *.docx
 *.zip
+web/node_modules/
+web/dist/

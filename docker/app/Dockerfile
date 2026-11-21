@@ -28,14 +28,31 @@ RUN go mod download
 # Create necessary directories
 RUN mkdir -p /usr/src/app/tmp/bin
 
-# Copy the rest of the source code
-COPY . .
+# Only Go sources invalidate the server build.
+COPY main.go ./
+COPY cmd/ ./cmd/
+COPY db/ ./db/
+COPY docs/ ./docs/
+COPY handlers/ ./handlers/
+COPY middleware/ ./middleware/
+COPY pkg/ ./pkg/
+COPY server/ ./server/
+COPY services/ ./services/
+COPY types/ ./types/
+COPY config/ ./config/
 
 # Build server executable
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /usr/src/app/tmp/server_process ./main.go
 
 # Build command executables
 RUN CGO_ENABLED=0 GOOS=linux go build -o /usr/src/app/tmp/bin/ ./cmd/seed ./cmd/seeddata ./cmd/createagent ./cmd/worker ./cmd/hashpass
+
+FROM node:22-alpine AS frontend
+WORKDIR /ui
+COPY web/package*.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
 
 FROM alpine:3.19 AS production
 
@@ -52,6 +69,7 @@ COPY docker/app/entrypoint.sh /usr/bin/app/entrypoint.sh
 RUN sed -i 's/\r$//' /usr/bin/app/entrypoint.sh /usr/bin/app/health-check.sh && \
     chmod +x /usr/bin/app/entrypoint.sh /usr/bin/app/health-check.sh
 
+COPY --from=frontend /ui/dist ./web/dist
 COPY db/migrations /usr/bin/app/db/migrations
 
 # Copy server executable and migrate tool

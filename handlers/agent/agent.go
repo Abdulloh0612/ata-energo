@@ -51,7 +51,8 @@ func badJSON(c *fiber.Ctx) error {
 // Hello godoc
 // @Summary Агент сообщает о себе (hostname, platform, version, local_ip, capabilities)
 // @Tags Agent
-// @Param X-Agent-Token header string true "Токен агента"
+// @Security AgentToken
+// @Param body body map[string]interface{} false "Сведения об агенте"
 // @Success 200 {object} map[string]interface{}
 // @Router /agent/hello/ [post]
 func (h *Handler) Hello(c *fiber.Ctx) error {
@@ -69,7 +70,7 @@ func (h *Handler) Hello(c *fiber.Ctx) error {
 // Poll godoc
 // @Summary Новые задачи и устройства, которые надо опрашивать
 // @Tags Agent
-// @Param X-Agent-Token header string true "Токен агента"
+// @Security AgentToken
 // @Success 200 {object} map[string]interface{}
 // @Router /agent/poll/ [get]
 func (h *Handler) Poll(c *fiber.Ctx) error {
@@ -88,8 +89,9 @@ func taskID(c *fiber.Ctx) (int64, bool) {
 // Progress godoc
 // @Summary Промежуточный результат задачи {log, found}
 // @Tags Agent
-// @Param X-Agent-Token header string true "Токен агента"
+// @Security AgentToken
 // @Param id path int true "ID задачи"
+// @Param body body map[string]interface{} false "Промежуточные результаты"
 // @Success 200 {object} map[string]bool
 // @Router /agent/tasks/{id}/progress/ [post]
 func (h *Handler) Progress(c *fiber.Ctx) error {
@@ -110,8 +112,9 @@ func (h *Handler) Progress(c *fiber.Ctx) error {
 // Finish godoc
 // @Summary Итог задачи {status, error, result, found}
 // @Tags Agent
-// @Param X-Agent-Token header string true "Токен агента"
+// @Security AgentToken
 // @Param id path int true "ID задачи"
+// @Param body body map[string]interface{} true "Итог задачи"
 // @Success 200 {object} map[string]bool
 // @Router /agent/tasks/{id}/finish/ [post]
 func (h *Handler) Finish(c *fiber.Ctx) error {
@@ -132,7 +135,8 @@ func (h *Handler) Finish(c *fiber.Ctx) error {
 // Telemetry godoc
 // @Summary Показания, прочитанные агентом {serial, payload} -> обычный мониторинг
 // @Tags Agent
-// @Param X-Agent-Token header string true "Токен агента"
+// @Security AgentToken
+// @Param body body map[string]interface{} true "Серийный номер и показания"
 // @Success 200 {object} map[string]bool
 // @Router /agent/telemetry/ [post]
 func (h *Handler) Telemetry(c *fiber.Ctx) error {

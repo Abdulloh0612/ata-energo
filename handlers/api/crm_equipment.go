@@ -39,11 +39,26 @@ const conditionQuery = `SELECT d.id AS device_id,d.client_id, e.model,e.nominal_
 	FROM devices d LEFT JOIN crm_equipment e ON e.device_id=d.id
 	CROSS JOIN crm_settings s`
 
+type powerThreshold struct {
+	LowPower int `json:"low_power_percent" minimum:"1" maximum:"100"`
+}
+
 func registerCRMEquipment(router fiber.Router, pool *pgxpool.Pool) {
 	equip := router.Group("/equipment", middleware.StaffOnly())
+	// @Summary Оборудование и обслуживание
+	// @Tags CRM · Оборудование
+	// @Security BearerAuth
+	// @Success 200 {array} map[string]interface{}
+	// @Router /crm/equipment [get]
 	equip.Get("/", func(c *fiber.Ctx) error {
 		return crmJSON(c, pool, `SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY device_id),'[]'::jsonb) FROM (`+conditionQuery+`) x`)
 	})
+	// @Summary Карточка оборудования
+	// @Tags CRM · Оборудование
+	// @Security BearerAuth
+	// @Param id path int true "ID записи"
+	// @Success 200 {object} map[string]interface{}
+	// @Router /crm/equipment/{id} [get]
 	equip.Get("/:id", func(c *fiber.Ctx) error {
 		id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 		if err != nil {
@@ -54,6 +69,13 @@ func registerCRMEquipment(router fiber.Router, pool *pgxpool.Pool) {
 			($2::boolean OR $3::boolean AND EXISTS(SELECT 1 FROM crm_work WHERE device_id=$1 AND assignee_id=$4 AND status<>'closed')))
 			FROM (`+conditionQuery+` WHERE d.id=$1) x`, id, u.IsManager(), u.Role == types.RoleTechnician, u.ID)
 	})
+	// @Summary Обновить данные обслуживания
+	// @Tags CRM · Оборудование
+	// @Security BearerAuth
+	// @Param id path int true "ID записи"
+	// @Param body body equipmentDetails true "Поля запроса"
+	// @Success 200 {object} map[string]int
+	// @Router /crm/equipment/{id} [put]
 	equip.Put("/:id", func(c *fiber.Ctx) error {
 		u := middleware.GetUser(c)
 		if !u.IsManager() && u.Role != types.RoleTechnician {
@@ -98,13 +120,22 @@ func registerCRMEquipment(router fiber.Router, pool *pgxpool.Pool) {
 		return c.JSON(fiber.Map{"device_id": result})
 	})
 	settings := router.Group("/settings", middleware.AdminOnly())
+	// @Summary Порог низкой мощности
+	// @Tags CRM · Оборудование
+	// @Security BearerAuth
+	// @Success 200 {object} powerThreshold
+	// @Router /crm/settings [get]
 	settings.Get("/", func(c *fiber.Ctx) error {
 		return crmJSON(c, pool, `SELECT jsonb_build_object('low_power_percent',low_power_percent) FROM crm_settings`)
 	})
+	// @Summary Изменить порог низкой мощности
+	// @Tags CRM · Оборудование
+	// @Security BearerAuth
+	// @Param body body powerThreshold true "Поля запроса"
+	// @Success 200 {object} powerThreshold
+	// @Router /crm/settings [put]
 	settings.Put("/", func(c *fiber.Ctx) error {
-		var value struct {
-			LowPower int `json:"low_power_percent"`
-		}
+		var value powerThreshold
 		if err := c.BodyParser(&value); err != nil || value.LowPower < 1 || value.LowPower > 100 {
 			return fiber.NewError(400, "Укажите порог от 1 до 100 процентов")
 		}

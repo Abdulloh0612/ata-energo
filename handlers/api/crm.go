@@ -41,8 +41,8 @@ func crmAccess(role, kind string) workAccess {
 type workInput struct {
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
-	Status      string     `json:"status"`
-	Priority    string     `json:"priority"`
+	Status      string     `json:"status" enums:"open,progress,closed" example:"open"`
+	Priority    string     `json:"priority" enums:"low,normal,high" example:"normal"`
 	ClientID    *int64     `json:"client_id"`
 	DeviceID    *int64     `json:"device_id"`
 	AssigneeID  *int64     `json:"assignee_id"`
@@ -50,11 +50,17 @@ type workInput struct {
 }
 
 func RegisterCRM(router fiber.Router, pool *pgxpool.Pool) {
+	registerDashboard(router, pool)
 	registerRoles(router, pool)
 	registerCRMEquipment(router, pool)
 	for _, kind := range []string{"requests", "tasks"} {
 		registerWork(router.Group("/"+kind), pool, kind)
 	}
+	// @Summary Журнал изменений CRM
+	// @Tags CRM
+	// @Security BearerAuth
+	// @Success 200 {array} map[string]interface{}
+	// @Router /crm/activity [get]
 	router.Get("/activity", func(c *fiber.Ctx) error {
 		if middleware.GetUser(c).Role != types.RoleAdmin {
 			return fiber.ErrForbidden
@@ -92,16 +98,51 @@ func registerWork(router fiber.Router, pool *pgxpool.Pool, kind string) {
 		c.Locals(workAccessKey, p)
 		return c.Next()
 	})
+	// @Summary Доступные действия
+	// @Tags CRM · Задачи
+	// @Security BearerAuth
+	// @Success 200 {object} map[string]bool
+	// @Router /crm/tasks/permissions [get]
+
+	// @Summary Доступные действия
+	// @Tags CRM · Заявки
+	// @Security BearerAuth
+	// @Success 200 {object} map[string]bool
+	// @Router /crm/requests/permissions [get]
 	router.Get("/permissions", func(c *fiber.Ctx) error {
 		p := c.Locals(workAccessKey).(workAccess)
 		return c.JSON(fiber.Map{"create": p.Create, "edit": p.Edit, "delete": p.Delete, "assign": p.Assign, "relations": middleware.GetUser(c).Role != types.RoleTechnician})
 	})
+	// @Summary Задачи
+	// @Tags CRM · Задачи
+	// @Security BearerAuth
+	// @Success 200 {array} map[string]interface{}
+	// @Router /crm/tasks [get]
+
+	// @Summary Заявки
+	// @Tags CRM · Заявки
+	// @Security BearerAuth
+	// @Success 200 {array} map[string]interface{}
+	// @Router /crm/requests [get]
 	router.Get("/", func(c *fiber.Ctx) error {
 		u := middleware.GetUser(c)
 		p := c.Locals(workAccessKey).(workAccess)
 		return crmJSON(c, pool, `SELECT coalesce(jsonb_agg(to_jsonb(w) ORDER BY id DESC),'[]'::jsonb)
 			FROM crm_work w WHERE kind=$1`+workScope, kind, u.ID, p.Own, u.Role == types.RoleCRMManager)
 	})
+	// @Summary Карточка задачи
+	// @Tags CRM · Задачи
+	// @Security BearerAuth
+	// @Param id path int true "ID записи"
+	// @Success 200 {object} map[string]interface{}
+	// @Router /crm/tasks/{id} [get]
+
+	// @Summary Карточка заявки
+	// @Tags CRM · Заявки
+	// @Security BearerAuth
+	// @Param id path int true "ID записи"
+	// @Success 200 {object} map[string]interface{}
+	// @Router /crm/requests/{id} [get]
 	router.Get("/:id", func(c *fiber.Ctx) error {
 		u := middleware.GetUser(c)
 		p := c.Locals(workAccessKey).(workAccess)
@@ -119,6 +160,49 @@ func registerWork(router fiber.Router, pool *pgxpool.Pool, kind string) {
 		if method == fiber.MethodPost {
 			path = "/"
 		}
+		// @Summary Создать задачу
+		// @Tags CRM · Задачи
+		// @Security BearerAuth
+		// @Param body body workInput true "Поля запроса"
+		// @Success 201 {object} map[string]interface{}
+		// @Router /crm/tasks [post]
+
+		// @Summary Изменить задачу
+		// @Tags CRM · Задачи
+		// @Security BearerAuth
+		// @Param id path int true "ID записи"
+		// @Param body body workInput true "Поля запроса"
+		// @Success 200 {object} map[string]interface{}
+		// @Router /crm/tasks/{id} [put]
+
+		// @Summary Удалить задачу
+		// @Tags CRM · Задачи
+		// @Security BearerAuth
+		// @Param id path int true "ID записи"
+		// @Success 200 {object} map[string]interface{}
+		// @Router /crm/tasks/{id} [delete]
+
+		// @Summary Создать заявку
+		// @Tags CRM · Заявки
+		// @Security BearerAuth
+		// @Param body body workInput true "Поля запроса"
+		// @Success 201 {object} map[string]interface{}
+		// @Router /crm/requests [post]
+
+		// @Summary Изменить заявку
+		// @Tags CRM · Заявки
+		// @Security BearerAuth
+		// @Param id path int true "ID записи"
+		// @Param body body workInput true "Поля запроса"
+		// @Success 200 {object} map[string]interface{}
+		// @Router /crm/requests/{id} [put]
+
+		// @Summary Удалить заявку
+		// @Tags CRM · Заявки
+		// @Security BearerAuth
+		// @Param id path int true "ID записи"
+		// @Success 200 {object} map[string]interface{}
+		// @Router /crm/requests/{id} [delete]
 		router.Add(method, path, func(c *fiber.Ctx) error { return writeWork(c, pool, kind, method) })
 	}
 }

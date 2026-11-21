@@ -33,6 +33,9 @@ func NewDeviceHandler(devices *services.DeviceService, modems *services.ModemSer
 // @Summary Устройства (каждый видит своё). Фильтры: ?client=ID ?type=inverter ?status=online
 // @Tags Devices
 // @Security BearerAuth
+// @Param client query int false "ID клиента"
+// @Param type query string false "Тип устройства"
+// @Param status query string false "Статус"
 // @Success 200 {array} types.DeviceView
 // @Router /devices/ [get]
 func (h *DeviceHandler) ListDevices(c *fiber.Ctx) error {
@@ -117,6 +120,7 @@ func (h *DeviceHandler) CreateDevice(c *fiber.Ctx) error {
 // @Param body body types.DeviceWrite true "Поля"
 // @Success 200 {object} types.DeviceView
 // @Router /devices/{id}/ [patch]
+// @Router /devices/{id}/ [put]
 func (h *DeviceHandler) UpdateDevice(c *fiber.Ctx) error {
 	id, ok := paramID(c, "id")
 	if !ok {
@@ -211,6 +215,8 @@ func (h *DeviceHandler) History(c *fiber.Ctx) error {
 // @Summary Последние показания своих устройств (роль user). ?limit=100 ?device=ID
 // @Tags Devices
 // @Security BearerAuth
+// @Param device query int false "ID устройства"
+// @Param limit query int false "Число записей" minimum(1) maximum(1000) default(100)
 // @Success 200 {array} types.Telemetry
 // @Router /my/telemetry/ [get]
 func (h *DeviceHandler) MyTelemetry(c *fiber.Ctx) error {
@@ -228,6 +234,8 @@ func (h *DeviceHandler) MyTelemetry(c *fiber.Ctx) error {
 // @Summary Модемы (каждый видит своё). Фильтры: ?client=ID ?search=SN
 // @Tags Modems
 // @Security BearerAuth
+// @Param client query int false "ID клиента"
+// @Param search query string false "Поиск"
 // @Success 200 {array} types.ModemView
 // @Router /modems/ [get]
 func (h *DeviceHandler) ListModems(c *fiber.Ctx) error {
@@ -289,6 +297,7 @@ func (h *DeviceHandler) CreateModem(c *fiber.Ctx) error {
 // @Param body body types.ModemWrite true "Поля"
 // @Success 200 {object} types.ModemView
 // @Router /modems/{id}/ [patch]
+// @Router /modems/{id}/ [put]
 func (h *DeviceHandler) UpdateModem(c *fiber.Ctx) error {
 	id, ok := paramID(c, "id")
 	if !ok {

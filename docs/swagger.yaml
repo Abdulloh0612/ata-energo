@@ -1,9 +1,48 @@
 basePath: /api
+consumes:
+- application/json
 definitions:
   api.DetailResponse:
     properties:
       detail:
         example: Страница не найдена.
+        type: string
+    type: object
+  api.crmRole:
+    properties:
+      code:
+        type: string
+      grants:
+        additionalProperties:
+          $ref: '#/definitions/api.workAccess'
+        type: object
+      name:
+        type: string
+      system:
+        type: boolean
+    type: object
+  api.customerRequestInput:
+    properties:
+      description:
+        type: string
+      title:
+        type: string
+    type: object
+  api.equipmentDetails:
+    properties:
+      installed_on:
+        type: string
+      maintenance:
+        type: boolean
+      model:
+        type: string
+      nominal_watts:
+        type: number
+      service_due_on:
+        type: string
+      serviced_on:
+        type: string
+      warranty_until:
         type: string
     type: object
   api.loginRequest:
@@ -14,6 +53,30 @@ definitions:
       username:
         example: admin
         type: string
+    type: object
+  api.powerThreshold:
+    properties:
+      low_power_percent:
+        maximum: 100
+        minimum: 1
+        type: integer
+    type: object
+  api.providerInput:
+    properties:
+      adapter:
+        enum:
+        - local
+        - eybond
+        type: string
+      code:
+        type: string
+      name:
+        type: string
+    type: object
+  api.providerState:
+    properties:
+      enabled:
+        type: boolean
     type: object
   api.refreshRequest:
     properties:
@@ -29,6 +92,55 @@ definitions:
         type: string
       subnet:
         example: 192.168.1.0/24
+        type: string
+    type: object
+  api.siteClientInput:
+    properties:
+      client_id:
+        type: integer
+    type: object
+  api.workAccess:
+    properties:
+      assign:
+        type: boolean
+      create:
+        type: boolean
+      delete:
+        type: boolean
+      edit:
+        type: boolean
+      own:
+        type: boolean
+      view:
+        type: boolean
+    type: object
+  api.workInput:
+    properties:
+      assignee_id:
+        type: integer
+      client_id:
+        type: integer
+      description:
+        type: string
+      device_id:
+        type: integer
+      due_at:
+        type: string
+      priority:
+        enum:
+        - low
+        - normal
+        - high
+        example: normal
+        type: string
+      status:
+        enum:
+        - open
+        - progress
+        - closed
+        example: open
+        type: string
+      title:
         type: string
     type: object
   deye.AccountInfoResponse:
@@ -1167,18 +1279,12 @@ definitions:
     type: object
   types.VendorAccount:
     properties:
-      app_id:
-        type: string
       base_url:
-        type: string
-      company_id:
-        type: integer
-      country_code:
         type: string
       created_at:
         type: string
-      email:
-        type: string
+      has_credentials:
+        type: boolean
       id:
         type: integer
       is_active:
@@ -1187,13 +1293,9 @@ definitions:
         type: string
       last_sync_at:
         type: string
-      mobile:
-        type: string
       modems_count:
         type: integer
       name:
-        type: string
-      username:
         type: string
       vendor:
         type: string
@@ -1226,58 +1328,62 @@ definitions:
 host: localhost:8000
 info:
   contact: {}
-  description: 'Мониторинг солнечных станций: панели → инвертор → батарея → генератор
-    → сеть → нагрузка. Данные модемов (MQTT), локальных агентов и Deye Cloud.'
+  description: |-
+    Мониторинг солнечных станций: панели → инвертор → батарея → генератор → сеть → нагрузка. Данные модемов (MQTT), локальных агентов и Deye Cloud.
+    Для проверки запросов выполните POST /auth/login и вставьте `Bearer <access>` в Authorize. Для локальных агентов используется X-Agent-Token.
+    Deye Cloud: получите локальный ID через GET /deye/accounts, проверьте подключение через POST /deye/accounts/{id}/test и откройте GET /deye/accounts/{id}/stations. Для телеметрии нужен ID подключённого модема из GET /modems.
+    Поток телеметрии доступен через WebSocket `/ws/telemetry?token=<access>`.
   title: Ата Энерго API
   version: "1.0"
 paths:
   /agent/hello/:
     post:
       parameters:
-      - description: Токен агента
-        in: header
-        name: X-Agent-Token
-        required: true
-        type: string
+      - description: Сведения об агенте
+        in: body
+        name: body
+        schema:
+          additionalProperties: true
+          type: object
       responses:
         "200":
           description: OK
           schema:
             additionalProperties: true
             type: object
+      security:
+      - AgentToken: []
       summary: Агент сообщает о себе (hostname, platform, version, local_ip, capabilities)
       tags:
       - Agent
   /agent/poll/:
     get:
-      parameters:
-      - description: Токен агента
-        in: header
-        name: X-Agent-Token
-        required: true
-        type: string
       responses:
         "200":
           description: OK
           schema:
             additionalProperties: true
             type: object
+      security:
+      - AgentToken: []
       summary: Новые задачи и устройства, которые надо опрашивать
       tags:
       - Agent
   /agent/tasks/{id}/finish/:
     post:
       parameters:
-      - description: Токен агента
-        in: header
-        name: X-Agent-Token
-        required: true
-        type: string
       - description: ID задачи
         in: path
         name: id
         required: true
         type: integer
+      - description: Итог задачи
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
       responses:
         "200":
           description: OK
@@ -1285,22 +1391,25 @@ paths:
             additionalProperties:
               type: boolean
             type: object
+      security:
+      - AgentToken: []
       summary: Итог задачи {status, error, result, found}
       tags:
       - Agent
   /agent/tasks/{id}/progress/:
     post:
       parameters:
-      - description: Токен агента
-        in: header
-        name: X-Agent-Token
-        required: true
-        type: string
       - description: ID задачи
         in: path
         name: id
         required: true
         type: integer
+      - description: Промежуточные результаты
+        in: body
+        name: body
+        schema:
+          additionalProperties: true
+          type: object
       responses:
         "200":
           description: OK
@@ -1308,17 +1417,21 @@ paths:
             additionalProperties:
               type: boolean
             type: object
+      security:
+      - AgentToken: []
       summary: Промежуточный результат задачи {log, found}
       tags:
       - Agent
   /agent/telemetry/:
     post:
       parameters:
-      - description: Токен агента
-        in: header
-        name: X-Agent-Token
+      - description: Серийный номер и показания
+        in: body
+        name: body
         required: true
-        type: string
+        schema:
+          additionalProperties: true
+          type: object
       responses:
         "200":
           description: OK
@@ -1326,6 +1439,8 @@ paths:
             additionalProperties:
               type: boolean
             type: object
+      security:
+      - AgentToken: []
       summary: Показания, прочитанные агентом {serial, payload} -> обычный мониторинг
       tags:
       - Agent
@@ -1418,6 +1533,29 @@ paths:
       summary: Изменить агента (name, client, is_active)
       tags:
       - Discovery
+    put:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.AgentWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.Agent'
+      security:
+      - BearerAuth: []
+      summary: Изменить агента (name, client, is_active)
+      tags:
+      - Discovery
   /agents/{id}/new_token/:
     post:
       parameters:
@@ -1440,6 +1578,17 @@ paths:
       - Discovery
   /alerts/:
     get:
+      parameters:
+      - description: ID клиента
+        in: query
+        name: client
+        type: integer
+      - description: Только непрочитанные
+        enum:
+        - 1
+        in: query
+        name: unread
+        type: integer
       responses:
         "200":
           description: OK
@@ -1556,6 +1705,11 @@ paths:
       - Auth
   /clients/:
     get:
+      parameters:
+      - description: Поиск
+        in: query
+        name: search
+        type: string
       produces:
       - application/json
       responses:
@@ -1649,6 +1803,31 @@ paths:
       summary: Изменить клиента, его логин и основной модем
       tags:
       - Clients
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.ClientWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ClientView'
+      security:
+      - BearerAuth: []
+      summary: Изменить клиента, его логин и основной модем
+      tags:
+      - Clients
   /clients/{id}/devices/:
     get:
       parameters:
@@ -1669,8 +1848,678 @@ paths:
       summary: Всё оборудование клиента
       tags:
       - Clients
+  /crm/access:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Права текущего пользователя
+      tags:
+      - CRM · Доступ
+  /crm/active-alerts:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Активные аварии оборудования
+      tags:
+      - CRM
+  /crm/activity:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Журнал изменений CRM
+      tags:
+      - CRM
+  /crm/agent-tasks:
+    get:
+      parameters:
+      - description: ID агента
+        in: query
+        name: agent
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Последние задачи локального агента
+      tags:
+      - CRM
+  /crm/assignees:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Список исполнителей
+      tags:
+      - CRM
+  /crm/equipment:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Оборудование и обслуживание
+      tags:
+      - CRM · Оборудование
+  /crm/equipment/{id}:
+    get:
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Карточка оборудования
+      tags:
+      - CRM · Оборудование
+    put:
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.equipmentDetails'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить данные обслуживания
+      tags:
+      - CRM · Оборудование
+  /crm/generation:
+    get:
+      parameters:
+      - default: day
+        description: Период
+        enum:
+        - day
+        - week
+        - month
+        in: query
+        name: period
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Выработка за период
+      tags:
+      - CRM
+  /crm/integrations/accounts:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Состояние подключённых аккаунтов
+      tags:
+      - CRM · Интеграции
+  /crm/integrations/accounts/{id}/sync:
+    post:
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Синхронизировать каталог аккаунта
+      tags:
+      - CRM · Интеграции
+  /crm/integrations/activity:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Журнал изменений учётных данных
+      tags:
+      - CRM · Интеграции
+  /crm/integrations/providers:
+    post:
+      parameters:
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.providerInput'
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать провайдера
+      tags:
+      - CRM · Интеграции
+  /crm/integrations/providers/{code}:
+    put:
+      parameters:
+      - description: Код
+        in: path
+        name: code
+        required: true
+        type: string
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.providerState'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Включить или выключить провайдера
+      tags:
+      - CRM · Интеграции
+  /crm/providers:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Провайдеры и число объектов
+      tags:
+      - CRM · Объекты
+  /crm/requests:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Заявки
+      tags:
+      - CRM · Заявки
+    post:
+      parameters:
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.workInput'
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать заявку
+      tags:
+      - CRM · Заявки
+  /crm/requests/{id}:
+    delete:
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить заявку
+      tags:
+      - CRM · Заявки
+    get:
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Карточка заявки
+      tags:
+      - CRM · Заявки
+    put:
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.workInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Изменить заявку
+      tags:
+      - CRM · Заявки
+  /crm/requests/permissions:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Доступные действия
+      tags:
+      - CRM · Заявки
+  /crm/roles:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.crmRole'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Роли сотрудников
+      tags:
+      - CRM · Доступ
+    post:
+      parameters:
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.crmRole'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.crmRole'
+      security:
+      - BearerAuth: []
+      summary: Создать роль
+      tags:
+      - CRM · Доступ
+  /crm/roles/{code}:
+    delete:
+      parameters:
+      - description: Код
+        in: path
+        name: code
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Удалить роль
+      tags:
+      - CRM · Доступ
+    put:
+      parameters:
+      - description: Код
+        in: path
+        name: code
+        required: true
+        type: string
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.crmRole'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.crmRole'
+      security:
+      - BearerAuth: []
+      summary: Изменить роль
+      tags:
+      - CRM · Доступ
+  /crm/settings:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.powerThreshold'
+      security:
+      - BearerAuth: []
+      summary: Порог низкой мощности
+      tags:
+      - CRM · Оборудование
+    put:
+      parameters:
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.powerThreshold'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.powerThreshold'
+      security:
+      - BearerAuth: []
+      summary: Изменить порог низкой мощности
+      tags:
+      - CRM · Оборудование
+  /crm/sites:
+    get:
+      parameters:
+      - description: Коды провайдеров через запятую, например deye,local
+        in: query
+        name: provider
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Объекты станций
+      tags:
+      - CRM · Объекты
+  /crm/sites/{id}:
+    get:
+      parameters:
+      - description: ID из списка объектов
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Карточка объекта и его устройства
+      tags:
+      - CRM · Объекты
+  /crm/sites/{id}/client:
+    put:
+      parameters:
+      - description: ID из списка объектов
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.siteClientInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Привязать объект к клиенту
+      tags:
+      - CRM · Объекты
+  /crm/tasks:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Задачи
+      tags:
+      - CRM · Задачи
+    post:
+      parameters:
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.workInput'
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать задачу
+      tags:
+      - CRM · Задачи
+  /crm/tasks/{id}:
+    delete:
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить задачу
+      tags:
+      - CRM · Задачи
+    get:
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Карточка задачи
+      tags:
+      - CRM · Задачи
+    put:
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.workInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Изменить задачу
+      tags:
+      - CRM · Задачи
+  /crm/tasks/permissions:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Доступные действия
+      tags:
+      - CRM · Задачи
   /devices/:
     get:
+      parameters:
+      - description: ID клиента
+        in: query
+        name: client
+        type: integer
+      - description: Тип устройства
+        in: query
+        name: type
+        type: string
+      - description: Статус
+        in: query
+        name: status
+        type: string
       responses:
         "200":
           description: OK
@@ -1736,6 +2585,29 @@ paths:
       tags:
       - Devices
     patch:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.DeviceWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.DeviceView'
+      security:
+      - BearerAuth: []
+      summary: Изменить устройство (admin, it_head)
+      tags:
+      - Devices
+    put:
       parameters:
       - description: ID
         in: path
@@ -1879,6 +2751,29 @@ paths:
       summary: Изменить аккаунт Deye (пустой password — не менять)
       tags:
       - Deye
+    put:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.VendorAccountWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.VendorAccount'
+      security:
+      - BearerAuth: []
+      summary: Изменить аккаунт Deye (пустой password — не менять)
+      tags:
+      - Deye
   /deye/accounts/{id}/devices/:
     get:
       parameters:
@@ -1886,6 +2781,20 @@ paths:
         in: path
         name: id
         required: true
+        type: integer
+      - default: 1
+        description: Номер страницы
+        in: query
+        maximum: 100000
+        minimum: 1
+        name: page
+        type: integer
+      - default: 20
+        description: Записей на странице
+        in: query
+        maximum: 200
+        minimum: 1
+        name: size
         type: integer
       responses:
         "200":
@@ -1955,7 +2864,10 @@ paths:
         name: id
         required: true
         type: integer
-      - description: add | delete
+      - description: Действие
+        enum:
+        - add
+        - delete
         in: path
         name: action
         required: true
@@ -1985,6 +2897,30 @@ paths:
         name: id
         required: true
         type: integer
+      - default: 1
+        description: Номер страницы
+        in: query
+        maximum: 100000
+        minimum: 1
+        name: page
+        type: integer
+      - default: 20
+        description: Записей на странице (до 50 с устройствами)
+        in: query
+        maximum: 200
+        minimum: 1
+        name: size
+        type: integer
+      - description: Включить устройства
+        enum:
+        - 1
+        in: query
+        name: with_devices
+        type: integer
+      - description: Тип для списка с устройствами, например INVERTER
+        in: query
+        name: device_type
+        type: string
       responses:
         "200":
           description: OK
@@ -2034,6 +2970,20 @@ paths:
         name: sid
         required: true
         type: integer
+      - default: 1
+        description: Номер страницы
+        in: query
+        maximum: 100000
+        minimum: 1
+        name: page
+        type: integer
+      - default: 20
+        description: Записей на странице
+        in: query
+        maximum: 200
+        minimum: 1
+        name: size
+        type: integer
       responses:
         "200":
           description: OK
@@ -2070,6 +3020,9 @@ paths:
       - Deye
   /deye/accounts/{id}/test/:
     post:
+      description: Требуется роль admin. Укажите ID из GET /deye/accounts. Сервер
+        обновит токен Deye, запросит сведения об организации и сохранит результат
+        проверки.
       parameters:
       - description: ID
         in: path
@@ -2081,9 +3034,29 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/deye.AccountInfoResponse'
+        "401":
+          description: Требуется вход в CRM
+          schema:
+            $ref: '#/definitions/api.DetailResponse'
+        "403":
+          description: Требуется роль admin
+          schema:
+            $ref: '#/definitions/api.DetailResponse'
+        "404":
+          description: Аккаунт не найден
+          schema:
+            $ref: '#/definitions/api.DetailResponse'
+        "502":
+          description: Ошибка Deye Cloud
+          schema:
+            $ref: '#/definitions/api.DetailResponse'
+        "504":
+          description: Истекло время ожидания Deye Cloud
+          schema:
+            $ref: '#/definitions/api.DetailResponse'
       security:
       - BearerAuth: []
-      summary: Проверить вход в Deye Cloud (токен + организация аккаунта)
+      summary: Проверить подключение к Deye Cloud
       tags:
       - Deye
   /deye/sync/:
@@ -2102,6 +3075,14 @@ paths:
       - Deye
   /discovery/browser-bluetooth/:
     post:
+      parameters:
+      - description: Данные обнаруженного устройства
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
       responses:
         "201":
           description: Created
@@ -2115,6 +3096,11 @@ paths:
       - Discovery
   /discovery/devices/:
     get:
+      parameters:
+      - description: ID агента
+        in: query
+        name: agent
+        type: integer
       responses:
         "200":
           description: OK
@@ -2135,6 +3121,13 @@ paths:
         name: id
         required: true
         type: integer
+      - description: Клиент и параметры подключения
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
       responses:
         "200":
           description: OK
@@ -2155,6 +3148,12 @@ paths:
         name: id
         required: true
         type: integer
+      - description: Параметры протокола
+        in: body
+        name: body
+        schema:
+          additionalProperties: true
+          type: object
       responses:
         "201":
           description: Created
@@ -2217,6 +3216,18 @@ paths:
       summary: Ход поиска и найденные устройства
       tags:
       - Discovery
+  /health:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Проверить доступность API
+      tags:
+      - Health
   /me/:
     get:
       produces:
@@ -2233,6 +3244,15 @@ paths:
       - Auth
   /modems/:
     get:
+      parameters:
+      - description: ID клиента
+        in: query
+        name: client
+        type: integer
+      - description: Поиск
+        in: query
+        name: search
+        type: string
       responses:
         "200":
           description: OK
@@ -2320,6 +3340,29 @@ paths:
       summary: Изменить модем (смена SN переименует устройства)
       tags:
       - Modems
+    put:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.ModemWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ModemView'
+      security:
+      - BearerAuth: []
+      summary: Изменить модем (смена SN переименует устройства)
+      tags:
+      - Modems
   /modems/{id}/deye/alerts/:
     get:
       parameters:
@@ -2328,6 +3371,28 @@ paths:
         name: id
         required: true
         type: integer
+      - default: 1
+        description: Номер страницы
+        in: query
+        maximum: 100000
+        minimum: 1
+        name: page
+        type: integer
+      - default: 20
+        description: Записей на странице
+        in: query
+        maximum: 100
+        minimum: 1
+        name: size
+        type: integer
+      - description: Начало периода, дата или Unix timestamp
+        in: query
+        name: from
+        type: string
+      - description: Конец периода, дата или Unix timestamp
+        in: query
+        name: to
+        type: string
       responses:
         "200":
           description: OK
@@ -2347,6 +3412,14 @@ paths:
         name: id
         required: true
         type: integer
+      - description: Раздел настроек
+        enum:
+        - battery
+        - system
+        - tou
+        in: query
+        name: part
+        type: string
       responses:
         "200":
           description: OK
@@ -2368,10 +3441,31 @@ paths:
         required: true
         type: integer
       - description: Команда
+        enum:
+        - battery-mode
+        - battery-parameter
+        - battery-type
+        - peak-shaving
+        - smartload
+        - energy-pattern
+        - limit-control
+        - power
+        - solar-sell
+        - tou-switch
+        - tou
+        - work-mode
+        - dynamic
         in: path
         name: command
         required: true
         type: string
+      - description: JSON выбранной команды. Сервер подставляет deviceSn.
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
       responses:
         "200":
           description: OK
@@ -2379,9 +3473,7 @@ paths:
             $ref: '#/definitions/deye.ControlResponse'
       security:
       - BearerAuth: []
-      summary: 'Команда инвертору (admin, it_head). command: battery-mode, battery-parameter,
-        battery-type, modbus, peak-shaving, smartload, energy-pattern, limit-control,
-        power, solar-sell, tou-switch, tou, work-mode, dynamic'
+      summary: Отправить команду управления инвертором
       tags:
       - Deye
   /modems/{id}/deye/dynamic/read/:
@@ -2499,6 +3591,10 @@ paths:
         name: id
         required: true
         type: integer
+      - description: Тип устройства, например INVERTER
+        in: query
+        name: device_type
+        type: string
       responses:
         "200":
           description: OK
@@ -2541,6 +3637,28 @@ paths:
         name: id
         required: true
         type: integer
+      - default: 1
+        description: Номер страницы
+        in: query
+        maximum: 100000
+        minimum: 1
+        name: page
+        type: integer
+      - default: 20
+        description: Записей на странице
+        in: query
+        maximum: 200
+        minimum: 1
+        name: size
+        type: integer
+      - description: Начало периода, дата или Unix timestamp
+        in: query
+        name: from
+        type: string
+      - description: Конец периода, дата или Unix timestamp
+        in: query
+        name: to
+        type: string
       responses:
         "200":
           description: OK
@@ -2633,8 +3751,69 @@ paths:
       summary: Устройства текущего клиента (роль user)
       tags:
       - Devices
+  /my/requests:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Мои заявки
+      tags:
+      - Личный кабинет
+    post:
+      parameters:
+      - description: Поля запроса
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.customerRequestInput'
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Подать заявку
+      tags:
+      - Личный кабинет
+  /my/sites:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Мои объекты
+      tags:
+      - Личный кабинет
   /my/telemetry/:
     get:
+      parameters:
+      - description: ID устройства
+        in: query
+        name: device
+        type: integer
+      - default: 100
+        description: Число записей
+        in: query
+        maximum: 1000
+        minimum: 1
+        name: limit
+        type: integer
       responses:
         "200":
           description: OK
@@ -2649,6 +3828,21 @@ paths:
       - Devices
   /users/:
     get:
+      parameters:
+      - description: Роль
+        in: query
+        name: role
+        type: string
+      - description: Только сотрудники
+        enum:
+        - 1
+        in: query
+        name: staff
+        type: integer
+      - description: Поиск
+        in: query
+        name: search
+        type: string
       produces:
       - application/json
       responses:
@@ -2741,9 +3935,40 @@ paths:
       summary: Изменить пользователя (PATCH/PUT). Если передан password — меняет пароль
       tags:
       - Users
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.UserWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.UserView'
+      security:
+      - BearerAuth: []
+      summary: Изменить пользователя (PATCH/PUT). Если передан password — меняет пароль
+      tags:
+      - Users
+produces:
+- application/json
 securityDefinitions:
+  AgentToken:
+    in: header
+    name: X-Agent-Token
+    type: apiKey
   BearerAuth:
-    description: Enter "Bearer {token}"
+    description: '`Bearer <access>` из ответа /api/auth/login'
     in: header
     name: Authorization
     type: apiKey

@@ -21,6 +21,7 @@ func NewClientHandler(clients *services.ClientService) *ClientHandler {
 // @Tags Clients
 // @Security BearerAuth
 // @Produce json
+// @Param search query string false "Поиск"
 // @Success 200 {array} types.ClientView
 // @Router /clients/ [get]
 func (h *ClientHandler) List(c *fiber.Ctx) error {
@@ -82,6 +83,7 @@ func (h *ClientHandler) Create(c *fiber.Ctx) error {
 // @Param body body types.ClientWrite true "Поля"
 // @Success 200 {object} types.ClientView
 // @Router /clients/{id}/ [patch]
+// @Router /clients/{id}/ [put]
 func (h *ClientHandler) Update(c *fiber.Ctx) error {
 	id, ok := paramID(c, "id")
 	if !ok {

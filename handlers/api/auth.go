@@ -105,6 +105,9 @@ func (h *AuthHandler) Me(c *fiber.Ctx) error {
 // @Tags Users
 // @Security BearerAuth
 // @Produce json
+// @Param role query string false "Роль"
+// @Param staff query int false "Только сотрудники" Enums(1)
+// @Param search query string false "Поиск"
 // @Success 200 {array} types.UserView
 // @Router /users/ [get]
 func (h *AuthHandler) ListUsers(c *fiber.Ctx) error {
@@ -168,6 +171,7 @@ func (h *AuthHandler) CreateUser(c *fiber.Ctx) error {
 // @Param body body types.UserWrite true "Поля"
 // @Success 200 {object} types.UserView
 // @Router /users/{id}/ [patch]
+// @Router /users/{id}/ [put]
 func (h *AuthHandler) UpdateUser(c *fiber.Ctx) error {
 	id, ok := paramID(c, "id")
 	if !ok {

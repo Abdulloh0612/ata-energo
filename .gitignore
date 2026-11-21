@@ -9,3 +9,5 @@
 /.cursor
 /.claude
 firebase.json
+web/node_modules/
+web/dist/

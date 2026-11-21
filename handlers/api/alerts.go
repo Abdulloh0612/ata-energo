@@ -22,6 +22,8 @@ func NewAlertHandler(alerts repositories.AlertRepository) *AlertHandler {
 // @Summary Аварии (200 последних). ?unread=1&client=ID
 // @Tags Alerts
 // @Security BearerAuth
+// @Param client query int false "ID клиента"
+// @Param unread query int false "Только непрочитанные" Enums(1)
 // @Success 200 {array} types.Alert
 // @Router /alerts/ [get]
 func (h *AlertHandler) List(c *fiber.Ctx) error {

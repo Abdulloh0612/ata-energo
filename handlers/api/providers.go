@@ -52,17 +52,50 @@ const installationQuery = `WITH catalog AS (
 
 var providerCode = regexp.MustCompile(`^[a-z][a-z0-9_-]{1,29}$`)
 
+type siteClientInput struct {
+	ClientID int64 `json:"client_id"`
+}
+
+type providerInput struct {
+	Code    string `json:"code"`
+	Name    string `json:"name"`
+	Adapter string `json:"adapter" enums:"local,eybond"`
+}
+
+type providerState struct {
+	Enabled *bool `json:"enabled"`
+}
+
 func RegisterProviders(router fiber.Router, pool *pgxpool.Pool, catalog *services.ProviderCatalog) {
+	// @Summary Объекты станций
+	// @Tags CRM · Объекты
+	// @Security BearerAuth
+	// @Param provider query string false "Коды провайдеров через запятую, например deye,local"
+	// @Success 200 {array} map[string]interface{}
+	// @Router /crm/sites [get]
 	router.Get("/sites", middleware.StaffOnly(), func(c *fiber.Ctx) error {
 		return crmJSON(c, pool, installationQuery+`SELECT coalesce(jsonb_agg(to_jsonb(e) ORDER BY name,id),'[]'::jsonb)
 			FROM enriched e WHERE ($1='' OR provider_code=ANY(string_to_array($1,',')))`, c.Query("provider"))
 	})
+	// @Summary Карточка объекта и его устройства
+	// @Tags CRM · Объекты
+	// @Security BearerAuth
+	// @Param id path string true "ID из списка объектов"
+	// @Success 200 {object} map[string]interface{}
+	// @Router /crm/sites/{id} [get]
 	router.Get("/sites/:id", middleware.StaffOnly(), func(c *fiber.Ctx) error {
 		return crmJSON(c, pool, installationQuery+`SELECT to_jsonb(e) || jsonb_build_object('devices',
 			(SELECT coalesce(jsonb_agg(jsonb_build_object('id',d.id,'name',d.name,'serial_number',d.serial_number,
 			'status',d.status,'power',d.last_data->'power') ORDER BY d.id),'[]'::jsonb) FROM devices d WHERE d.modem_id=ANY(e.modem_ids)))
 			FROM enriched e WHERE e.id=$1`, c.Params("id"))
 	})
+	// @Summary Привязать объект к клиенту
+	// @Tags CRM · Объекты
+	// @Security BearerAuth
+	// @Param id path string true "ID из списка объектов"
+	// @Param body body siteClientInput true "Поля запроса"
+	// @Success 200 {object} map[string]interface{}
+	// @Router /crm/sites/{id}/client [put]
 	router.Put("/sites/:id/client", middleware.StaffOnly(), func(c *fiber.Ctx) error {
 		u := middleware.GetUser(c)
 		if !u.IsManager() && u.Role != types.RoleCRMManager {
@@ -72,9 +105,7 @@ func RegisterProviders(router fiber.Router, pool *pgxpool.Pool, catalog *service
 		if !strings.HasPrefix(c.Params("id"), "s") || err != nil {
 			return fiber.ErrNotFound
 		}
-		var data struct {
-			ClientID int64 `json:"client_id"`
-		}
+		var data siteClientInput
 		if err := c.BodyParser(&data); err != nil || data.ClientID <= 0 {
 			return fiber.NewError(400, "Выберите клиента")
 		}
@@ -83,6 +114,11 @@ func RegisterProviders(router fiber.Router, pool *pgxpool.Pool, catalog *service
 			AND EXISTS(SELECT 1 FROM clients c WHERE c.id=$2)
 			RETURNING to_jsonb(s)`, id, data.ClientID)
 	})
+	// @Summary Провайдеры и число объектов
+	// @Tags CRM · Объекты
+	// @Security BearerAuth
+	// @Success 200 {array} map[string]interface{}
+	// @Router /crm/providers [get]
 	router.Get("/providers", middleware.StaffOnly(), func(c *fiber.Ctx) error {
 		return crmJSON(c, pool, installationQuery+`SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY name),'[]'::jsonb)
 			FROM (SELECT p.*, (SELECT count(*) FROM enriched e WHERE e.provider_code=p.code AND NOT e.archived) AS sites_count,
@@ -90,18 +126,34 @@ func RegisterProviders(router fiber.Router, pool *pgxpool.Pool, catalog *service
 			FROM providers p) x`)
 	})
 	integrations := router.Group("/integrations", middleware.AdminOnly())
+	// @Summary Журнал изменений учётных данных
+	// @Tags CRM · Интеграции
+	// @Security BearerAuth
+	// @Success 200 {array} map[string]interface{}
+	// @Router /crm/integrations/activity [get]
 	integrations.Get("/activity", func(c *fiber.Ctx) error {
 		return crmJSON(c, pool, `SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY id DESC),'[]'::jsonb) FROM
 			(SELECT e.*,u.username AS actor_name FROM provider_credential_events e LEFT JOIN users u ON u.id=e.actor_id ORDER BY e.id DESC LIMIT 100) x`)
 	})
+	// @Summary Состояние подключённых аккаунтов
+	// @Tags CRM · Интеграции
+	// @Security BearerAuth
+	// @Success 200 {array} map[string]interface{}
+	// @Router /crm/integrations/accounts [get]
 	integrations.Get("/accounts", func(c *fiber.Ctx) error {
 		return crmJSON(c, pool, `SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY name),'[]'::jsonb) FROM
 			(SELECT a.id,a.name,a.vendor AS provider_code,a.base_url,a.is_active,a.last_sync_at,a.last_error,
 			(a.fields_encrypted IS NOT NULL) has_credentials,s.last_attempt_at,s.last_success_at,s.last_error AS catalog_error
 			FROM vendor_accounts a LEFT JOIN provider_catalog_sync s ON s.account_id=a.id) x`)
 	})
+	// @Summary Создать провайдера
+	// @Tags CRM · Интеграции
+	// @Security BearerAuth
+	// @Param body body providerInput true "Поля запроса"
+	// @Success 201 {object} map[string]string
+	// @Router /crm/integrations/providers [post]
 	integrations.Post("/providers", func(c *fiber.Ctx) error {
-		var input struct{ Code, Name, Adapter string }
+		var input providerInput
 		if err := c.BodyParser(&input); err != nil {
 			return fiber.ErrBadRequest
 		}
@@ -121,15 +173,26 @@ func RegisterProviders(router fiber.Router, pool *pgxpool.Pool, catalog *service
 		}
 		return c.Status(201).JSON(fiber.Map{"code": code})
 	})
+	// @Summary Включить или выключить провайдера
+	// @Tags CRM · Интеграции
+	// @Security BearerAuth
+	// @Param code path string true "Код"
+	// @Param body body providerState true "Поля запроса"
+	// @Success 200 {object} map[string]interface{}
+	// @Router /crm/integrations/providers/{code} [put]
 	integrations.Put("/providers/:code", func(c *fiber.Ctx) error {
-		var input struct {
-			Enabled *bool `json:"enabled"`
-		}
+		var input providerState
 		if err := c.BodyParser(&input); err != nil || input.Enabled == nil {
 			return fiber.ErrBadRequest
 		}
 		return crmJSON(c, pool, `UPDATE providers SET enabled=$2 WHERE code=$1 AND adapter<>'local' RETURNING to_jsonb(providers)`, c.Params("code"), *input.Enabled)
 	})
+	// @Summary Синхронизировать каталог аккаунта
+	// @Tags CRM · Интеграции
+	// @Security BearerAuth
+	// @Param id path int true "ID записи"
+	// @Success 200 {object} map[string]bool
+	// @Router /crm/integrations/accounts/{id}/sync [post]
 	integrations.Post("/accounts/:id/sync", func(c *fiber.Ctx) error {
 		id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 		if err != nil {

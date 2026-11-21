@@ -68,8 +68,8 @@ seed-down:
 
 swagger:
 	@echo "Generating Swagger documentation..."
-	@go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g server/server.go -o docs --parseDependency --parseInternal --exclude ./templates,./docker,./agent
-	@echo "Done: http://$${APP_BASE_URL:-localhost:8000}/swagger/index.html"
+	@go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g server/server.go -o docs --parseDependencyLevel 1 --parseInternal --parseFuncBody --exclude ./templates,./docker,./agent,./web
+	@echo "Done: $${APP_BASE_URL:-http://localhost:8000}/swagger/index.html"
 
 swagger-fmt:
 	@echo "Formatting Swagger comments..."

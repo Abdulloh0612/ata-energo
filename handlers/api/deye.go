@@ -18,7 +18,7 @@ import (
 
 // DeyeHandler — интеграция с Deye Cloud.
 //
-// Аккаунты (admin, it_head):
+// Аккаунты (admin):
 //
 //	GET/POST          /api/deye/accounts/
 //	GET/PATCH/DELETE  /api/deye/accounts/{id}/
@@ -34,7 +34,7 @@ import (
 //	POST /api/deye/accounts/{id}/import/                  подключить устройство Deye как модем клиента
 //	POST /api/deye/sync/                                  опросить облако прямо сейчас
 //
-// Модем, подключённый через Deye Cloud (чтение — кому доступен модем, команды — admin, it_head):
+// Модем, подключённый через Deye Cloud (чтение — кому доступен модем, команды — admin):
 //
 //	GET  /api/modems/{id}/deye/latest/            сырые показания устройства
 //	GET  /api/modems/{id}/deye/station/           текущие данные станции
@@ -153,6 +153,7 @@ func (h *DeyeHandler) CreateAccount(c *fiber.Ctx) error {
 // @Param body body types.VendorAccountWrite true "Поля"
 // @Success 200 {object} types.VendorAccount
 // @Router /deye/accounts/{id}/ [patch]
+// @Router /deye/accounts/{id}/ [put]
 func (h *DeyeHandler) UpdateAccount(c *fiber.Ctx) error {
 	id, ok := paramID(c, "id")
 	if !ok {
@@ -188,11 +189,17 @@ func (h *DeyeHandler) DeleteAccount(c *fiber.Ctx) error {
 }
 
 // TestAccount godoc
-// @Summary Проверить вход в Deye Cloud (токен + организация аккаунта)
+// @Summary Проверить подключение к Deye Cloud
+// @Description Требуется роль admin. Укажите ID из GET /deye/accounts. Сервер обновит токен Deye, запросит сведения об организации и сохранит результат проверки.
 // @Tags Deye
 // @Security BearerAuth
 // @Param id path int true "ID"
 // @Success 200 {object} deye.AccountInfoResponse
+// @Failure 401 {object} DetailResponse "Требуется вход в CRM"
+// @Failure 403 {object} DetailResponse "Требуется роль admin"
+// @Failure 404 {object} DetailResponse "Аккаунт не найден"
+// @Failure 502 {object} DetailResponse "Ошибка Deye Cloud"
+// @Failure 504 {object} DetailResponse "Истекло время ожидания Deye Cloud"
 // @Router /deye/accounts/{id}/test/ [post]
 func (h *DeyeHandler) TestAccount(c *fiber.Ctx) error {
 	id, ok := paramID(c, "id")
@@ -211,6 +218,10 @@ func (h *DeyeHandler) TestAccount(c *fiber.Ctx) error {
 // @Tags Deye
 // @Security BearerAuth
 // @Param id path int true "ID аккаунта"
+// @Param page query int false "Номер страницы" minimum(1) maximum(100000) default(1)
+// @Param size query int false "Записей на странице (до 50 с устройствами)" minimum(1) maximum(200) default(20)
+// @Param with_devices query int false "Включить устройства" Enums(1)
+// @Param device_type query string false "Тип для списка с устройствами, например INVERTER"
 // @Success 200 {object} map[string]interface{}
 // @Router /deye/accounts/{id}/stations/ [get]
 func (h *DeyeHandler) Stations(c *fiber.Ctx) error {
@@ -270,6 +281,8 @@ func (h *DeyeHandler) Station(c *fiber.Ctx) error {
 // @Security BearerAuth
 // @Param id path int true "ID аккаунта"
 // @Param sid path int true "ID станции Deye"
+// @Param page query int false "Номер страницы" minimum(1) maximum(100000) default(1)
+// @Param size query int false "Записей на странице" minimum(1) maximum(200) default(20)
 // @Success 200 {object} deye.StationDeviceResponse
 // @Router /deye/accounts/{id}/stations/{sid}/devices/ [get]
 func (h *DeyeHandler) StationDevices(c *fiber.Ctx) error {
@@ -318,6 +331,8 @@ func (h *DeyeHandler) StationCreate(c *fiber.Ctx) error {
 // @Tags Deye
 // @Security BearerAuth
 // @Param id path int true "ID аккаунта"
+// @Param page query int false "Номер страницы" minimum(1) maximum(100000) default(1)
+// @Param size query int false "Записей на странице" minimum(1) maximum(200) default(20)
 // @Success 200 {object} deye.DeviceListResponse
 // @Router /deye/accounts/{id}/devices/ [get]
 func (h *DeyeHandler) Devices(c *fiber.Ctx) error {
@@ -362,7 +377,7 @@ func (h *DeyeHandler) DeviceRegister(c *fiber.Ctx) error {
 // @Tags Deye
 // @Security BearerAuth
 // @Param id path int true "ID аккаунта"
-// @Param action path string true "add | delete"
+// @Param action path string true "Действие" Enums(add,delete)
 // @Param body body deye.LoggerRequest true "SN логгеров"
 // @Success 200 {object} deye.BaseResponse
 // @Router /deye/accounts/{id}/loggers/{action}/ [post]
@@ -519,6 +534,7 @@ func (h *DeyeHandler) StationLatest(c *fiber.Ctx) error {
 // @Tags Deye
 // @Security BearerAuth
 // @Param id path int true "ID модема"
+// @Param device_type query string false "Тип устройства, например INVERTER"
 // @Success 200 {object} deye.MeasurePointsResponse
 // @Router /modems/{id}/deye/measure-points/ [get]
 func (h *DeyeHandler) MeasurePoints(c *fiber.Ctx) error {
@@ -676,6 +692,10 @@ func (h *DeyeHandler) StationHistoryPower(c *fiber.Ctx) error {
 // @Tags Deye
 // @Security BearerAuth
 // @Param id path int true "ID модема"
+// @Param page query int false "Номер страницы" minimum(1) maximum(100000) default(1)
+// @Param size query int false "Записей на странице" minimum(1) maximum(100) default(20)
+// @Param from query string false "Начало периода, дата или Unix timestamp"
+// @Param to query string false "Конец периода, дата или Unix timestamp"
 // @Success 200 {object} deye.DeviceAlertListResponse
 // @Router /modems/{id}/deye/alerts/ [get]
 func (h *DeyeHandler) Alerts(c *fiber.Ctx) error {
@@ -704,6 +724,10 @@ func (h *DeyeHandler) Alerts(c *fiber.Ctx) error {
 // @Tags Deye
 // @Security BearerAuth
 // @Param id path int true "ID модема"
+// @Param page query int false "Номер страницы" minimum(1) maximum(100000) default(1)
+// @Param size query int false "Записей на странице" minimum(1) maximum(200) default(20)
+// @Param from query string false "Начало периода, дата или Unix timestamp"
+// @Param to query string false "Конец периода, дата или Unix timestamp"
 // @Success 200 {object} deye.StationAlertListResponse
 // @Router /modems/{id}/deye/station-alerts/ [get]
 func (h *DeyeHandler) StationAlerts(c *fiber.Ctx) error {
@@ -736,6 +760,7 @@ func (h *DeyeHandler) StationAlerts(c *fiber.Ctx) error {
 // @Tags Deye
 // @Security BearerAuth
 // @Param id path int true "ID модема"
+// @Param part query string false "Раздел настроек" Enums(battery,system,tou)
 // @Success 200 {object} map[string]interface{}
 // @Router /modems/{id}/deye/config/ [get]
 func (h *DeyeHandler) Config(c *fiber.Ctx) error {
@@ -794,7 +819,6 @@ var DeyeCommands = map[string]controlFunc{
 	"battery-parameter": ctrl(func(r *deye.BatteryParameterRequest, sn string) { r.DeviceSn = sn }, (*deye.Client).BatteryParameterUpdate),
 	// {batteryType: BATT_V|BATT_SOC|LI|NO_BATTERY}
 	"battery-type": ctrl(func(r *deye.BatteryTypeRequest, sn string) { r.DeviceSn = sn }, (*deye.Client).BatteryTypeUpdate),
-	// {content: "0103000102ABCD", timeoutSeconds}
 	// {action: on|off, power}
 	"peak-shaving": ctrl(func(r *deye.PeakShavingRequest, sn string) { r.DeviceSn = sn }, (*deye.Client).GridPeakShavingControl),
 	// {onSOC, offSOC | onVoltage, offVoltage, onGridAlwaysOn}
@@ -818,11 +842,12 @@ var DeyeCommands = map[string]controlFunc{
 }
 
 // Control godoc
-// @Summary Команда инвертору (admin, it_head). command: battery-mode, battery-parameter, battery-type, modbus, peak-shaving, smartload, energy-pattern, limit-control, power, solar-sell, tou-switch, tou, work-mode, dynamic
+// @Summary Отправить команду управления инвертором
 // @Tags Deye
 // @Security BearerAuth
 // @Param id path int true "ID модема"
-// @Param command path string true "Команда"
+// @Param command path string true "Команда" Enums(battery-mode,battery-parameter,battery-type,peak-shaving,smartload,energy-pattern,limit-control,power,solar-sell,tou-switch,tou,work-mode,dynamic)
+// @Param body body map[string]interface{} true "JSON выбранной команды. Сервер подставляет deviceSn."
 // @Success 200 {object} deye.ControlResponse
 // @Router /modems/{id}/deye/control/{command}/ [post]
 func (h *DeyeHandler) Control(c *fiber.Ctx) error {

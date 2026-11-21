@@ -27,12 +27,20 @@ import (
 // @title Ата Энерго API
 // @version 1.0
 // @description Мониторинг солнечных станций: панели → инвертор → батарея → генератор → сеть → нагрузка. Данные модемов (MQTT), локальных агентов и Deye Cloud.
+// @description Для проверки запросов выполните POST /auth/login и вставьте `Bearer <access>` в Authorize. Для локальных агентов используется X-Agent-Token.
+// @description Deye Cloud: получите локальный ID через GET /deye/accounts, проверьте подключение через POST /deye/accounts/{id}/test и откройте GET /deye/accounts/{id}/stations. Для телеметрии нужен ID подключённого модема из GET /modems.
+// @description Поток телеметрии доступен через WebSocket `/ws/telemetry?token=<access>`.
+// @accept json
+// @produce json
 // @host localhost:8000
 // @BasePath /api
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Enter "Bearer {token}"
+// @description `Bearer <access>` из ответа /api/auth/login
+// @securityDefinitions.apikey AgentToken
+// @in header
+// @name X-Agent-Token
 
 type Server struct {
 	app      *fiber.App
@@ -71,20 +79,40 @@ func New() (*Server, error) {
 
 	app.Get("/swagger/*", swagger.New(swagger.Config{InstanceName: "swagger"}))
 
+	registerRoutes(app, s)
+
+	// Vite emits content-hashed assets. Only browser navigation receives the SPA shell.
+	app.Static("/assets", "web/dist/assets", fiber.Static{MaxAge: 31536000})
+	app.Get("*", func(c *fiber.Ctx) error {
+		if strings.Contains(c.Path(), ".") || strings.HasPrefix(c.Path(), "/assets/") {
+			return fiber.ErrNotFound
+		}
+		c.Set(fiber.HeaderCacheControl, "no-cache")
+		return c.SendFile("web/dist/index.html")
+	})
+
+	return &Server{app: app, services: s}, nil
+}
+
+func registerRoutes(app *fiber.App, s Services) {
 	authH := apihandler.NewAuthHandler(s.Auth, s.Users)
 	clientH := apihandler.NewClientHandler(s.Clients)
-	deviceH := apihandler.NewDeviceHandler(s.Devices, s.Modems, s.ClientRepo, e.Location)
+	deviceH := apihandler.NewDeviceHandler(s.Devices, s.Modems, s.ClientRepo, s.Location)
 	alertH := apihandler.NewAlertHandler(s.AlertRepo)
 	discoveryH := apihandler.NewDiscoveryHandler(s.Discovery, s.ClientRepo)
-	deyeH := apihandler.NewDeyeHandler(s.Deye, s.Modems, s.Collector, e.Location)
+	deyeH := apihandler.NewDeyeHandler(s.Deye, s.Modems, s.Collector, s.Location)
 	agentH := agenthandler.NewHandler(s.Discovery)
-	wsH := wshandler.NewHandler(s.Auth, e.Hub, e.Logger)
+	wsH := wshandler.NewHandler(s.Auth, s.Hub, s.Logger)
 
 	// ── WebSocket ─────────────────────────────────────────────────────────────
 	app.Use("/ws", wsH.Upgrade)
 	app.Get("/ws/telemetry", wsH.Telemetry())
 
 	api := app.Group("/api")
+	// @Summary Проверить доступность API
+	// @Tags Health
+	// @Success 200 {object} map[string]string
+	// @Router /health [get]
 	api.Get("/health", func(c *fiber.Ctx) error { return c.JSON(fiber.Map{"status": "ok"}) })
 
 	// ── Вход ──────────────────────────────────────────────────────────────────
@@ -106,8 +134,8 @@ func New() (*Server, error) {
 	manager := middleware.ManagerOnly()
 
 	api.Get("/me", jwt, authH.Me)
-	apihandler.RegisterCRM(api.Group("/crm", jwt), e.Pool)
-	apihandler.RegisterProviders(api.Group("/crm", jwt), e.Pool, s.Catalog)
+	apihandler.RegisterCRM(api.Group("/crm", jwt), s.Pool)
+	apihandler.RegisterProviders(api.Group("/crm", jwt), s.Pool, s.Catalog)
 
 	users := api.Group("/users", jwt, manager)
 	users.Get("", authH.ListUsers)
@@ -136,6 +164,7 @@ func New() (*Server, error) {
 	devices.Get("/:id/history", deviceH.History)
 
 	my := api.Group("/my", jwt, middleware.ClientOnly())
+	apihandler.RegisterCustomerPortal(my, s.Pool)
 	my.Get("/devices", deviceH.MyDevices)
 	my.Get("/telemetry", deviceH.MyTelemetry)
 
@@ -191,7 +220,7 @@ func New() (*Server, error) {
 	disc.Post("/devices/:id/connect", discoveryH.DeviceConnect)
 	disc.Post("/browser-bluetooth", discoveryH.BrowserBluetooth)
 
-	// ── Deye Cloud: аккаунты (admin, it_head) ─────────────────────────────────
+	// ── Deye Cloud: аккаунты (admin) ─────────────────────────────────
 	dy := api.Group("/deye", jwt, middleware.AdminOnly())
 	dy.Post("/sync", deyeH.Sync)
 	dy.Get("/accounts", deyeH.ListAccounts)
@@ -213,8 +242,6 @@ func New() (*Server, error) {
 	api.Use(func(c *fiber.Ctx) error { // неизвестный /api/... — JSON 404
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"detail": "Страница не найдена."})
 	})
-
-	return &Server{app: app, services: s}, nil
 }
 
 // errorHandler — непредвиденные ошибки: в лог, клиенту — {"detail": ...}.

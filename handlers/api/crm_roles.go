@@ -49,14 +49,28 @@ func roleGrants(ctx context.Context, pool *pgxpool.Pool, role string) (map[strin
 var customRoleCode = regexp.MustCompile(`^crm_[a-z][a-z0-9_]{1,15}$`)
 
 func registerRoles(router fiber.Router, pool *pgxpool.Pool) {
+	// @Summary Права текущего пользователя
+	// @Tags CRM · Доступ
+	// @Security BearerAuth
+	// @Success 200 {object} map[string]interface{}
+	// @Router /crm/access [get]
 	router.Get("/access", func(c *fiber.Ctx) error {
 		grants, err := roleGrants(c.UserContext(), pool, middleware.GetUser(c).Role)
 		if err != nil {
 			return err
 		}
-		return c.JSON(grants)
+		u := middleware.GetUser(c)
+		return c.JSON(fiber.Map{"requests": grants["requests"], "tasks": grants["tasks"],
+			"sections": fiber.Map{"overview": u.IsStaffViewer(), "clients": u.IsStaffViewer(), "sites": u.IsStaffViewer(),
+				"devices": u.IsStaffViewer(), "alerts": u.IsStaffViewer(), "requests": grants["requests"].View,
+				"tasks": grants["tasks"].View, "integrations": u.IsManager(), "admin": u.IsManager()}})
 	})
 	roles := router.Group("/roles", middleware.AdminOnly())
+	// @Summary Роли сотрудников
+	// @Tags CRM · Доступ
+	// @Security BearerAuth
+	// @Success 200 {array} crmRole
+	// @Router /crm/roles [get]
 	roles.Get("/", func(c *fiber.Ctx) error {
 		rows, err := pool.Query(c.UserContext(), `SELECT code,name,system,grants FROM crm_roles WHERE code<>'user' ORDER BY system DESC,name`)
 		if err != nil {
@@ -82,8 +96,27 @@ func registerRoles(router fiber.Router, pool *pgxpool.Pool) {
 		}
 		return c.JSON(list)
 	})
+	// @Summary Создать роль
+	// @Tags CRM · Доступ
+	// @Security BearerAuth
+	// @Param body body crmRole true "Поля запроса"
+	// @Success 201 {object} crmRole
+	// @Router /crm/roles [post]
 	roles.Post("/", func(c *fiber.Ctx) error { return saveCRMRole(c, pool, true) })
+	// @Summary Изменить роль
+	// @Tags CRM · Доступ
+	// @Security BearerAuth
+	// @Param code path string true "Код"
+	// @Param body body crmRole true "Поля запроса"
+	// @Success 200 {object} crmRole
+	// @Router /crm/roles/{code} [put]
 	roles.Put("/:code", func(c *fiber.Ctx) error { return saveCRMRole(c, pool, false) })
+	// @Summary Удалить роль
+	// @Tags CRM · Доступ
+	// @Security BearerAuth
+	// @Param code path string true "Код"
+	// @Success 204
+	// @Router /crm/roles/{code} [delete]
 	roles.Delete("/:code", func(c *fiber.Ctx) error {
 		tag, err := pool.Exec(c.UserContext(), `DELETE FROM crm_roles WHERE code=$1 AND NOT system`, c.Params("code"))
 		var pgErr *pgconn.PgError

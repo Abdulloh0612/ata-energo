@@ -1,0 +1,445 @@
+.ata-visual-chart {
+  --ata-series-b: color-mix(in srgb, var(--success) 76%, var(--text));
+  min-width: 0;
+  color: var(--text);
+}
+.ata-chart-tools,
+.ata-chart-legend,
+.ata-metric-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.ata-chart-tools {
+  justify-content: space-between;
+  margin: 0.25rem 0 1rem;
+}
+.ata-chart-legend {
+  gap: 1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.ata-chart-legend span {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.ata-chart-legend i {
+  display: inline-block;
+  width: 1rem;
+  height: 3px;
+  border-radius: 0.5rem;
+  background: var(--accent);
+}
+.ata-chart-legend i.secondary {
+  background: var(--ata-series-b);
+}
+.ata-periods {
+  display: inline-flex;
+  gap: 2px;
+  border-radius: 9px;
+  padding: 3px;
+  background: var(--surface-2);
+}
+.ata-periods button,
+.ata-metric-picker button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.ata-periods button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 4px var(--border);
+}
+.ata-metric-picker {
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+}
+.ata-metric-picker button {
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.32rem 0.55rem;
+}
+.ata-metric-picker button[aria-pressed="true"] {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+}
+.ata-chart-plot {
+  height: clamp(12rem, 22vw, 17.5rem);
+  width: 100%;
+  min-width: 0;
+}
+.ata-chart-plot .recharts-cartesian-axis-tick text {
+  fill: var(--text-muted);
+  font-size: 0.72rem;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+.ata-chart-plot .recharts-brush-slide {
+  fill: var(--accent);
+  fill-opacity: 0.14;
+}
+.ata-chart-tip {
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.6rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+.ata-chart-tip time {
+  font-weight: 600;
+}
+.ata-chart-tip div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.35rem;
+}
+.ata-chart-tip b,
+.ata-battery b,
+.ata-flow-node b {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.ata-visual-empty,
+.ata-map-empty {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.75rem;
+  min-height: 11rem;
+  padding: 1.25rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.ata-visual-empty > svg,
+.ata-map-empty > svg {
+  color: var(--text-muted);
+  width: 2rem;
+  height: 2rem;
+  stroke-width: 1.3;
+}
+.ata-chart-loading {
+  background: linear-gradient(
+    100deg,
+    transparent 15%,
+    var(--surface-2) 50%,
+    transparent 85%
+  );
+  background-size: 200% 100%;
+  animation: ata-chart-loading 1.4s ease infinite;
+}
+@keyframes ata-chart-loading {
+  to {
+    background-position-x: -200%;
+  }
+}
+.ata-map {
+  position: relative;
+  min-width: 0;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 14px);
+  background: var(--surface-2);
+}
+.ata-map-canvas,
+.ata-map-empty {
+  box-sizing: border-box;
+  height: clamp(19rem, 50vh, 35rem);
+  width: 100%;
+}
+.ata-map.compact .ata-map-canvas,
+.ata-map.compact .ata-map-empty {
+  height: 14rem;
+}
+.ata-map-empty {
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 2rem 2rem;
+}
+.ata-map-empty strong {
+  border-radius: 0.35rem;
+  padding: 0.2rem 0.45rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 550;
+}
+.ata-map .leaflet-container {
+  background: var(--surface-2);
+  font-family: inherit;
+  font-size: 0.8125rem;
+}
+.ata-map .leaflet-control-zoom a {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border);
+}
+.ata-map .leaflet-control-zoom {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.ata-map-marker {
+  --marker: var(--nodata, var(--text-muted));
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--marker) 22%, transparent);
+}
+.ata-map-marker.online {
+  --marker: var(--success);
+}
+.ata-map-marker.offline {
+  --marker: var(--danger);
+}
+.ata-map-marker.warning {
+  --marker: var(--warning, var(--accent));
+}
+.ata-map-marker i {
+  box-sizing: border-box;
+  display: block;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  background: var(--marker);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--marker);
+}
+.ata-site-cluster {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.ata-site-cluster span {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--accent-contrast, var(--text));
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+}
+.ata-map .leaflet-popup-content-wrapper,
+.ata-map .leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--text);
+}
+.ata-site-popup {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 5rem;
+}
+.ata-site-popup a {
+  font-weight: 650;
+  text-decoration: underline;
+  color: var(--text);
+}
+.ata-site-popup span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.ata-map-count,
+.ata-map-note {
+  position: absolute;
+  z-index: 450;
+  left: 0.6rem;
+  max-width: 80%;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.35rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.75rem;
+}
+.ata-map-count {
+  bottom: 1.5rem;
+}
+.ata-map-note {
+  top: 0.6rem;
+}
+.ata-battery {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.ata-battery > div {
+  width: 3.7rem;
+  height: 3.7rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--success) var(--charge), var(--surface-2) 0);
+}
+.ata-battery b {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  font-size: 0.87rem;
+}
+.ata-battery > span {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.ata-battery small {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.ata-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(8rem, auto));
+  gap: 1.6rem 1.5rem;
+  position: relative;
+  isolation: isolate;
+  align-items: center;
+  padding: 0.8rem 0.5rem;
+}
+.ata-flow > svg {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ata-flow path {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 2px;
+}
+.ata-flow path.is-flowing {
+  stroke: var(--accent);
+  stroke-dasharray: 5 6;
+  animation: ata-energy 1.25s linear infinite;
+}
+.ata-flow path.is-flowing.reverse {
+  animation-direction: reverse;
+}
+@keyframes ata-energy {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+.ata-flow-node {
+  box-sizing: border-box;
+  position: relative;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  width: min(100%, 8.5rem);
+  min-height: 6.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--surface);
+  padding: 0.55rem 0.25rem;
+  text-align: center;
+}
+.ata-flow-node.inverter {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+}
+.ata-flow-node.absent {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border-style: dashed;
+}
+.ata-flow-node b {
+  font-size: 0.95rem;
+}
+.ata-flow-icon {
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+}
+.ata-flow-node.inverter .ata-flow-icon {
+  color: var(--text);
+}
+.ata-flow-node strong,
+.ata-flow-node > button {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.ata-flow-node button {
+  border: 0;
+  background: none;
+  color: var(--text);
+  padding: 0.15rem 0.3rem;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.ata-flow-node small,
+.ata-flow-node details {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.ata-flow-node details {
+  position: relative;
+}
+.ata-flow-node summary {
+  cursor: pointer;
+}
+.ata-flow-node details > div {
+  position: absolute;
+  z-index: 2;
+  top: 100%;
+  left: 0;
+  display: grid;
+  min-width: 6rem;
+  max-width: 12rem;
+  max-height: 9rem;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  box-shadow: var(--shadow);
+  padding: 0.3rem;
+}
+@media (max-width: 520px) {
+  .ata-flow {
+    gap: 1rem 0.4rem;
+    padding: 0.5rem 0;
+  }
+  .ata-flow-node strong,
+  .ata-flow-node > button {
+    font-size: 0.76rem;
+  }
+  .ata-flow-node b {
+    font-size: 0.8rem;
+  }
+  .ata-flow-node small {
+    font-size: 0.69rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ata-chart-loading,
+  .ata-flow path.is-flowing {
+    animation: none;
+  }
+}

@@ -103,6 +103,7 @@ func (h *DiscoveryHandler) CreateAgent(c *fiber.Ctx) error {
 // @Param body body types.AgentWrite true "Поля"
 // @Success 200 {object} types.Agent
 // @Router /agents/{id}/ [patch]
+// @Router /agents/{id}/ [put]
 func (h *DiscoveryHandler) UpdateAgent(c *fiber.Ctx) error {
 	id, ok := paramID(c, "id")
 	if !ok {
@@ -224,6 +225,7 @@ func (h *DiscoveryHandler) TaskDetail(c *fiber.Ctx) error {
 // @Summary Все найденные устройства (новые сверху, до 500). ?agent=ID
 // @Tags Discovery
 // @Security BearerAuth
+// @Param agent query int false "ID агента"
 // @Success 200 {array} types.FoundDevice
 // @Router /discovery/devices/ [get]
 func (h *DiscoveryHandler) DeviceList(c *fiber.Ctx) error {
@@ -239,6 +241,7 @@ func (h *DiscoveryHandler) DeviceList(c *fiber.Ctx) error {
 // @Tags Discovery
 // @Security BearerAuth
 // @Param id path int true "ID устройства"
+// @Param body body map[string]interface{} false "Параметры протокола"
 // @Success 201 {object} types.AgentTask
 // @Router /discovery/devices/{id}/probe/ [post]
 func (h *DiscoveryHandler) DeviceProbe(c *fiber.Ctx) error {
@@ -269,6 +272,7 @@ func (h *DiscoveryHandler) DeviceProbe(c *fiber.Ctx) error {
 // @Tags Discovery
 // @Security BearerAuth
 // @Param id path int true "ID устройства"
+// @Param body body map[string]interface{} true "Клиент и параметры подключения"
 // @Success 200 {object} map[string]interface{}
 // @Router /discovery/devices/{id}/connect/ [post]
 func (h *DiscoveryHandler) DeviceConnect(c *fiber.Ctx) error {
@@ -345,6 +349,7 @@ func (h *DiscoveryHandler) DevicesClear(c *fiber.Ctx) error {
 // @Summary Сохранить устройство, найденное в браузере через Web Bluetooth {id, name, services, connected, error}
 // @Tags Discovery
 // @Security BearerAuth
+// @Param body body map[string]interface{} true "Данные обнаруженного устройства"
 // @Success 201 {object} types.FoundDevice
 // @Router /discovery/browser-bluetooth/ [post]
 func (h *DiscoveryHandler) BrowserBluetooth(c *fiber.Ctx) error {

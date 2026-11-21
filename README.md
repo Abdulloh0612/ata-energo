@@ -12,6 +12,20 @@
 | Realtime | WebSocket `/ws/telemetry/?token=` (Redis Pub/Sub между процессами) |
 | Источники данных | MQTT-модемы, локальный агент (`agent/`), **Deye Cloud OpenAPI**, демо-режим |
 
+## Веб-интерфейс
+
+При запуске через Docker Compose CRM открывается на http://localhost:8000. Сотрудники и клиенты входят под своими учётными записями. Для разработки включите тестовое наполнение командой `make seed` или через `SEED_DEMO=true` в Compose. Примеры входа для этой базы — `admin / admin123` и `client1 / client123`.
+
+Новый интерфейс находится в `web/`. Стек включает React, TypeScript, Vite, TanStack Query и Table, Zustand, React Router, Tailwind, Radix, Recharts, Leaflet и dnd-kit. Для разработки запустите API на порту 8000 и выполните:
+
+```bash
+cd web
+npm ci
+npm run dev
+```
+
+Vite проксирует HTTP и WebSocket на Go-сервер. Для запуска через `go run .` с готовым интерфейсом выполните `npm --prefix web run build`. Запуск Go выполняется из корня проекта. Образ Docker собирает обе части автоматически.
+
 ## Источники данных
 
 1. **MQTT** — модем шлёт всё в топик `inverter/<SN>/data` (`MQTT_ENABLED=true`).
@@ -102,7 +116,7 @@ Swagger: `http://localhost:8000/swagger/index.html` (`make swagger` — пере
 
 | Метод и адрес | Что делает |
 |---|---|
-| `GET/POST /deye/accounts/`, `GET/PATCH/DELETE /deye/accounts/{id}/` | аккаунты |
+| `GET/POST /deye/accounts/`, `GET/PATCH/PUT/DELETE /deye/accounts/{id}/` | аккаунты |
 | `POST /deye/accounts/{id}/test/` | проверить вход |
 | `GET /deye/accounts/{id}/stations/?with_devices=1` | станции (с устройствами) |
 | `GET /deye/accounts/{id}/stations/{sid}/`, `.../devices/`, `POST .../stations/create/` | станция |
@@ -111,7 +125,7 @@ Swagger: `http://localhost:8000/swagger/index.html` (`make swagger` — пере
 | `POST /deye/sync/` | опросить облако сейчас |
 | `GET /modems/{id}/deye/latest/`, `station/`, `measure-points/`, `alerts/`, `station-alerts/`, `config/` | данные / настройки |
 | `POST /modems/{id}/deye/history/`, `history-raw/`, `station-history/`, `station-history-power/` | история |
-| `POST /modems/{id}/deye/control/{command}/` | команды: `battery-mode`, `battery-parameter`, `battery-type`, `modbus`, `peak-shaving`, `smartload`, `energy-pattern`, `limit-control`, `power`, `solar-sell`, `tou-switch`, `tou`, `work-mode`, `dynamic` |
+| `POST /modems/{id}/deye/control/{command}/` | команды: `battery-mode`, `battery-parameter`, `battery-type`, `peak-shaving`, `smartload`, `energy-pattern`, `limit-control`, `power`, `solar-sell`, `tou-switch`, `tou`, `work-mode`, `dynamic` |
 | `GET /modems/{id}/deye/orders/{orderId}/`, `POST .../dynamic/read/`, `GET .../dynamic/result/{orderId}/` | результат команды (666 = выполнено) |
 
 Клиент API — `pkg/deye` (все 40 методов OpenAPI), перевод в формат модема — `pkg/deye/mapper.go`.

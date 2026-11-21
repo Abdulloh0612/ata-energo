@@ -5,6 +5,12 @@ import "github.com/swaggo/swag"
 
 const docTemplate = `{
     "schemes": {{ marshal .Schemes }},
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
     "swagger": "2.0",
     "info": {
         "description": "{{escape .Description}}",
@@ -17,17 +23,24 @@ const docTemplate = `{
     "paths": {
         "/agent/hello/": {
             "post": {
+                "security": [
+                    {
+                        "AgentToken": []
+                    }
+                ],
                 "tags": [
                     "Agent"
                 ],
                 "summary": "Агент сообщает о себе (hostname, platform, version, local_ip, capabilities)",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Токен агента",
-                        "name": "X-Agent-Token",
-                        "in": "header",
-                        "required": true
+                        "description": "Сведения об агенте",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
                     }
                 ],
                 "responses": {
@@ -43,19 +56,15 @@ const docTemplate = `{
         },
         "/agent/poll/": {
             "get": {
+                "security": [
+                    {
+                        "AgentToken": []
+                    }
+                ],
                 "tags": [
                     "Agent"
                 ],
                 "summary": "Новые задачи и устройства, которые надо опрашивать",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Токен агента",
-                        "name": "X-Agent-Token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -69,24 +78,32 @@ const docTemplate = `{
         },
         "/agent/tasks/{id}/finish/": {
             "post": {
+                "security": [
+                    {
+                        "AgentToken": []
+                    }
+                ],
                 "tags": [
                     "Agent"
                 ],
                 "summary": "Итог задачи {status, error, result, found}",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Токен агента",
-                        "name": "X-Agent-Token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
                         "description": "ID задачи",
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Итог задачи",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
                     }
                 ],
                 "responses": {
@@ -104,24 +121,31 @@ const docTemplate = `{
         },
         "/agent/tasks/{id}/progress/": {
             "post": {
+                "security": [
+                    {
+                        "AgentToken": []
+                    }
+                ],
                 "tags": [
                     "Agent"
                 ],
                 "summary": "Промежуточный результат задачи {log, found}",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Токен агента",
-                        "name": "X-Agent-Token",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
                         "description": "ID задачи",
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Промежуточные результаты",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
                     }
                 ],
                 "responses": {
@@ -139,17 +163,25 @@ const docTemplate = `{
         },
         "/agent/telemetry/": {
             "post": {
+                "security": [
+                    {
+                        "AgentToken": []
+                    }
+                ],
                 "tags": [
                     "Agent"
                 ],
                 "summary": "Показания, прочитанные агентом {serial, payload} -\u003e обычный мониторинг",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Токен агента",
-                        "name": "X-Agent-Token",
-                        "in": "header",
-                        "required": true
+                        "description": "Серийный номер и показания",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
                     }
                 ],
                 "responses": {
@@ -238,6 +270,43 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.Agent"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Discovery"
+                ],
+                "summary": "Изменить агента (name, client, is_active)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.AgentWrite"
+                        }
                     }
                 ],
                 "responses": {
@@ -356,6 +425,23 @@ const docTemplate = `{
                     "Alerts"
                 ],
                 "summary": "Аварии (200 последних). ?unread=1\u0026client=ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID клиента",
+                        "name": "client",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            1
+                        ],
+                        "type": "integer",
+                        "description": "Только непрочитанные",
+                        "name": "unread",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -548,6 +634,14 @@ const docTemplate = `{
                     "Clients"
                 ],
                 "summary": "Клиенты (+ модемы, количество устройств). Поиск: ?search=",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Поиск",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -612,6 +706,46 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ClientView"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Clients"
+                ],
+                "summary": "Изменить клиента, его логин и основной модем",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.ClientWrite"
+                        }
                     }
                 ],
                 "responses": {
@@ -722,6 +856,1084 @@ const docTemplate = `{
                 }
             }
         },
+        "/crm/access": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Доступ"
+                ],
+                "summary": "Права текущего пользователя",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/active-alerts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM"
+                ],
+                "summary": "Активные аварии оборудования",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/activity": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM"
+                ],
+                "summary": "Журнал изменений CRM",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/agent-tasks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM"
+                ],
+                "summary": "Последние задачи локального агента",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID агента",
+                        "name": "agent",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/assignees": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM"
+                ],
+                "summary": "Список исполнителей",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/equipment": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Оборудование"
+                ],
+                "summary": "Оборудование и обслуживание",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/equipment/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Оборудование"
+                ],
+                "summary": "Карточка оборудования",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Оборудование"
+                ],
+                "summary": "Обновить данные обслуживания",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.equipmentDetails"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/generation": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM"
+                ],
+                "summary": "Выработка за период",
+                "parameters": [
+                    {
+                        "enum": [
+                            "day",
+                            "week",
+                            "month"
+                        ],
+                        "type": "string",
+                        "default": "day",
+                        "description": "Период",
+                        "name": "period",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/integrations/accounts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Интеграции"
+                ],
+                "summary": "Состояние подключённых аккаунтов",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/integrations/accounts/{id}/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Интеграции"
+                ],
+                "summary": "Синхронизировать каталог аккаунта",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/integrations/activity": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Интеграции"
+                ],
+                "summary": "Журнал изменений учётных данных",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/integrations/providers": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Интеграции"
+                ],
+                "summary": "Создать провайдера",
+                "parameters": [
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.providerInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/integrations/providers/{code}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Интеграции"
+                ],
+                "summary": "Включить или выключить провайдера",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Код",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.providerState"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/providers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Объекты"
+                ],
+                "summary": "Провайдеры и число объектов",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/requests": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Заявки"
+                ],
+                "summary": "Заявки",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Заявки"
+                ],
+                "summary": "Создать заявку",
+                "parameters": [
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.workInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/requests/permissions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Заявки"
+                ],
+                "summary": "Доступные действия",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/requests/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Заявки"
+                ],
+                "summary": "Карточка заявки",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Заявки"
+                ],
+                "summary": "Изменить заявку",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.workInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Заявки"
+                ],
+                "summary": "Удалить заявку",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Доступ"
+                ],
+                "summary": "Роли сотрудников",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.crmRole"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Доступ"
+                ],
+                "summary": "Создать роль",
+                "parameters": [
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.crmRole"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.crmRole"
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/roles/{code}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Доступ"
+                ],
+                "summary": "Изменить роль",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Код",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.crmRole"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.crmRole"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Доступ"
+                ],
+                "summary": "Удалить роль",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Код",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/crm/settings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Оборудование"
+                ],
+                "summary": "Порог низкой мощности",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.powerThreshold"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Оборудование"
+                ],
+                "summary": "Изменить порог низкой мощности",
+                "parameters": [
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.powerThreshold"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.powerThreshold"
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/sites": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Объекты"
+                ],
+                "summary": "Объекты станций",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Коды провайдеров через запятую, например deye,local",
+                        "name": "provider",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/sites/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Объекты"
+                ],
+                "summary": "Карточка объекта и его устройства",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID из списка объектов",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/sites/{id}/client": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Объекты"
+                ],
+                "summary": "Привязать объект к клиенту",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID из списка объектов",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.siteClientInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/tasks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Задачи"
+                ],
+                "summary": "Задачи",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Задачи"
+                ],
+                "summary": "Создать задачу",
+                "parameters": [
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.workInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/tasks/permissions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Задачи"
+                ],
+                "summary": "Доступные действия",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/tasks/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Задачи"
+                ],
+                "summary": "Карточка задачи",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Задачи"
+                ],
+                "summary": "Изменить задачу",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.workInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Задачи"
+                ],
+                "summary": "Удалить задачу",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/devices/": {
             "get": {
                 "security": [
@@ -733,6 +1945,26 @@ const docTemplate = `{
                     "Devices"
                 ],
                 "summary": "Устройства (каждый видит своё). Фильтры: ?client=ID ?type=inverter ?status=online",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID клиента",
+                        "name": "client",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Тип устройства",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Статус",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -794,6 +2026,43 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.DeviceView"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Изменить устройство (admin, it_head)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.DeviceWrite"
+                        }
                     }
                 ],
                 "responses": {
@@ -1000,6 +2269,43 @@ const docTemplate = `{
                     }
                 }
             },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Deye"
+                ],
+                "summary": "Изменить аккаунт Deye (пустой password — не менять)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.VendorAccountWrite"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.VendorAccount"
+                        }
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {
@@ -1081,6 +2387,24 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "maximum": 100000,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Номер страницы",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Записей на странице",
+                        "name": "size",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1191,8 +2515,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "enum": [
+                            "add",
+                            "delete"
+                        ],
                         "type": "string",
-                        "description": "add | delete",
+                        "description": "Действие",
                         "name": "action",
                         "in": "path",
                         "required": true
@@ -1235,6 +2563,39 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "maximum": 100000,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Номер страницы",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Записей на странице (до 50 с устройствами)",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            1
+                        ],
+                        "type": "integer",
+                        "description": "Включить устройства",
+                        "name": "with_devices",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Тип для списка с устройствами, например INVERTER",
+                        "name": "device_type",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1350,6 +2711,24 @@ const docTemplate = `{
                         "name": "sid",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "maximum": 100000,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Номер страницы",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Записей на странице",
+                        "name": "size",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1369,10 +2748,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Требуется роль admin. Укажите ID из GET /deye/accounts. Сервер обновит токен Deye, запросит сведения об организации и сохранит результат проверки.",
                 "tags": [
                     "Deye"
                 ],
-                "summary": "Проверить вход в Deye Cloud (токен + организация аккаунта)",
+                "summary": "Проверить подключение к Deye Cloud",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1387,6 +2767,36 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/deye.AccountInfoResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется вход в CRM",
+                        "schema": {
+                            "$ref": "#/definitions/api.DetailResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Требуется роль admin",
+                        "schema": {
+                            "$ref": "#/definitions/api.DetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Аккаунт не найден",
+                        "schema": {
+                            "$ref": "#/definitions/api.DetailResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Ошибка Deye Cloud",
+                        "schema": {
+                            "$ref": "#/definitions/api.DetailResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "Истекло время ожидания Deye Cloud",
+                        "schema": {
+                            "$ref": "#/definitions/api.DetailResponse"
                         }
                     }
                 }
@@ -1427,6 +2837,18 @@ const docTemplate = `{
                     "Discovery"
                 ],
                 "summary": "Сохранить устройство, найденное в браузере через Web Bluetooth {id, name, services, connected, error}",
+                "parameters": [
+                    {
+                        "description": "Данные обнаруженного устройства",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -1448,6 +2870,14 @@ const docTemplate = `{
                     "Discovery"
                 ],
                 "summary": "Все найденные устройства (новые сверху, до 500). ?agent=ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID агента",
+                        "name": "agent",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1503,6 +2933,16 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Клиент и параметры подключения",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
                     }
                 ],
                 "responses": {
@@ -1534,6 +2974,15 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Параметры протокола",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
                     }
                 ],
                 "responses": {
@@ -1608,6 +3057,25 @@ const docTemplate = `{
                 }
             }
         },
+        "/health": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Проверить доступность API",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/me/": {
             "get": {
                 "security": [
@@ -1643,6 +3111,20 @@ const docTemplate = `{
                     "Modems"
                 ],
                 "summary": "Модемы (каждый видит своё). Фильтры: ?client=ID ?search=SN",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID клиента",
+                        "name": "client",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Поиск",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1704,6 +3186,43 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ModemView"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Modems"
+                ],
+                "summary": "Изменить модем (смена SN переименует устройства)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.ModemWrite"
+                        }
                     }
                 ],
                 "responses": {
@@ -1796,6 +3315,36 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "maximum": 100000,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Номер страницы",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Записей на странице",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Начало периода, дата или Unix timestamp",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Конец периода, дата или Unix timestamp",
+                        "name": "to",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1826,6 +3375,17 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "enum": [
+                            "battery",
+                            "system",
+                            "tou"
+                        ],
+                        "type": "string",
+                        "description": "Раздел настроек",
+                        "name": "part",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1849,7 +3409,7 @@ const docTemplate = `{
                 "tags": [
                     "Deye"
                 ],
-                "summary": "Команда инвертору (admin, it_head). command: battery-mode, battery-parameter, battery-type, modbus, peak-shaving, smartload, energy-pattern, limit-control, power, solar-sell, tou-switch, tou, work-mode, dynamic",
+                "summary": "Отправить команду управления инвертором",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1859,11 +3419,36 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "enum": [
+                            "battery-mode",
+                            "battery-parameter",
+                            "battery-type",
+                            "peak-shaving",
+                            "smartload",
+                            "energy-pattern",
+                            "limit-control",
+                            "power",
+                            "solar-sell",
+                            "tou-switch",
+                            "tou",
+                            "work-mode",
+                            "dynamic"
+                        ],
                         "type": "string",
                         "description": "Команда",
                         "name": "command",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "JSON выбранной команды. Сервер подставляет deviceSn.",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
                     }
                 ],
                 "responses": {
@@ -2069,6 +3654,12 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Тип устройства, например INVERTER",
+                        "name": "device_type",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2136,6 +3727,36 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "maximum": 100000,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Номер страницы",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Записей на странице",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Начало периода, дата или Unix timestamp",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Конец периода, дата или Unix timestamp",
+                        "name": "to",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2280,6 +3901,87 @@ const docTemplate = `{
                 }
             }
         },
+        "/my/requests": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Личный кабинет"
+                ],
+                "summary": "Мои заявки",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Личный кабинет"
+                ],
+                "summary": "Подать заявку",
+                "parameters": [
+                    {
+                        "description": "Поля запроса",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.customerRequestInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/my/sites": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Личный кабинет"
+                ],
+                "summary": "Мои объекты",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/my/telemetry/": {
             "get": {
                 "security": [
@@ -2291,6 +3993,23 @@ const docTemplate = `{
                     "Devices"
                 ],
                 "summary": "Последние показания своих устройств (роль user). ?limit=100 ?device=ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID устройства",
+                        "name": "device",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 1000,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 100,
+                        "description": "Число записей",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2318,6 +4037,29 @@ const docTemplate = `{
                     "Users"
                 ],
                 "summary": "Пользователи (?role=, ?staff=1, ?search=)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Роль",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            1
+                        ],
+                        "type": "integer",
+                        "description": "Только сотрудники",
+                        "name": "staff",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Поиск",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2382,6 +4124,46 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.UserView"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Изменить пользователя (PATCH/PUT). Если передан password — меняет пароль",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.UserWrite"
+                        }
                     }
                 ],
                 "responses": {
@@ -2470,6 +4252,63 @@ const docTemplate = `{
                 }
             }
         },
+        "api.crmRole": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "grants": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/api.workAccess"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "system": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.customerRequestInput": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.equipmentDetails": {
+            "type": "object",
+            "properties": {
+                "installed_on": {
+                    "type": "string"
+                },
+                "maintenance": {
+                    "type": "boolean"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "nominal_watts": {
+                    "type": "number"
+                },
+                "service_due_on": {
+                    "type": "string"
+                },
+                "serviced_on": {
+                    "type": "string"
+                },
+                "warranty_until": {
+                    "type": "string"
+                }
+            }
+        },
         "api.loginRequest": {
             "type": "object",
             "properties": {
@@ -2480,6 +4319,42 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "example": "admin"
+                }
+            }
+        },
+        "api.powerThreshold": {
+            "type": "object",
+            "properties": {
+                "low_power_percent": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1
+                }
+            }
+        },
+        "api.providerInput": {
+            "type": "object",
+            "properties": {
+                "adapter": {
+                    "type": "string",
+                    "enum": [
+                        "local",
+                        "eybond"
+                    ]
+                },
+                "code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.providerState": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
                 }
             }
         },
@@ -2504,6 +4379,78 @@ const docTemplate = `{
                 "subnet": {
                     "type": "string",
                     "example": "192.168.1.0/24"
+                }
+            }
+        },
+        "api.siteClientInput": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.workAccess": {
+            "type": "object",
+            "properties": {
+                "assign": {
+                    "type": "boolean"
+                },
+                "create": {
+                    "type": "boolean"
+                },
+                "delete": {
+                    "type": "boolean"
+                },
+                "edit": {
+                    "type": "boolean"
+                },
+                "own": {
+                    "type": "boolean"
+                },
+                "view": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.workInput": {
+            "type": "object",
+            "properties": {
+                "assignee_id": {
+                    "type": "integer"
+                },
+                "client_id": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "integer"
+                },
+                "due_at": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string",
+                    "enum": [
+                        "low",
+                        "normal",
+                        "high"
+                    ],
+                    "example": "normal"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "progress",
+                        "closed"
+                    ],
+                    "example": "open"
+                },
+                "title": {
+                    "type": "string"
                 }
             }
         },
@@ -4220,23 +6167,14 @@ const docTemplate = `{
         "types.VendorAccount": {
             "type": "object",
             "properties": {
-                "app_id": {
-                    "type": "string"
-                },
                 "base_url": {
-                    "type": "string"
-                },
-                "company_id": {
-                    "type": "integer"
-                },
-                "country_code": {
                     "type": "string"
                 },
                 "created_at": {
                     "type": "string"
                 },
-                "email": {
-                    "type": "string"
+                "has_credentials": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "integer"
@@ -4250,16 +6188,10 @@ const docTemplate = `{
                 "last_sync_at": {
                     "type": "string"
                 },
-                "mobile": {
-                    "type": "string"
-                },
                 "modems_count": {
                     "type": "integer"
                 },
                 "name": {
-                    "type": "string"
-                },
-                "username": {
                     "type": "string"
                 },
                 "vendor": {
@@ -4307,8 +6239,13 @@ const docTemplate = `{
         }
     },
     "securityDefinitions": {
+        "AgentToken": {
+            "type": "apiKey",
+            "name": "X-Agent-Token",
+            "in": "header"
+        },
         "BearerAuth": {
-            "description": "Enter \"Bearer {token}\"",
+            "description": "` + "`" + `Bearer \u003caccess\u003e` + "`" + ` из ответа /api/auth/login",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
@@ -4323,7 +6260,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/api",
 	Schemes:          []string{},
 	Title:            "Ата Энерго API",
-	Description:      "Мониторинг солнечных станций: панели → инвертор → батарея → генератор → сеть → нагрузка. Данные модемов (MQTT), локальных агентов и Deye Cloud.",
+	Description:      "Мониторинг солнечных станций: панели → инвертор → батарея → генератор → сеть → нагрузка. Данные модемов (MQTT), локальных агентов и Deye Cloud.\nДля проверки запросов выполните POST /auth/login и вставьте `Bearer <access>` в Authorize. Для локальных агентов используется X-Agent-Token.\nDeye Cloud: получите локальный ID через GET /deye/accounts, проверьте подключение через POST /deye/accounts/{id}/test и откройте GET /deye/accounts/{id}/stations. Для телеметрии нужен ID подключённого модема из GET /modems.\nПоток телеметрии доступен через WebSocket `/ws/telemetry?token=<access>`.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
