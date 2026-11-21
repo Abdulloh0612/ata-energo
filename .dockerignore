@@ -9,3 +9,6 @@ templates/
 _qr-parking/
 *.docx
 *.zip
+
+web/static/build/
+web/node_modules/

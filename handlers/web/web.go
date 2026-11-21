@@ -3,7 +3,10 @@ package web
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"html/template"
+	"os"
 	"path/filepath"
 
 	"github.com/gofiber/fiber/v2"
@@ -20,11 +23,43 @@ func NewHandler(webDir string, showDemo bool) (*Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+	assets, err := readFrontendAssets(webDir)
+	if err != nil {
+		return nil, err
+	}
 	var buf bytes.Buffer
-	if err := tpl.Execute(&buf, map[string]any{"ShowDemo": showDemo}); err != nil {
+	if err := tpl.Execute(&buf, struct {
+		ShowDemo bool
+		Frontend frontendAssets
+	}{showDemo, assets}); err != nil {
 		return nil, err
 	}
 	return &Handler{page: buf.Bytes()}, nil
+}
+
+type frontendAssets struct {
+	File string   `json:"file"`
+	CSS  []string `json:"css"`
+}
+
+func readFrontendAssets(webDir string) (frontendAssets, error) {
+	path := filepath.Join(webDir, "static", "build", ".vite", "manifest.json")
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return frontendAssets{}, nil // исходный интерфейс при запуске Go без сборки Vite
+	}
+	if err != nil {
+		return frontendAssets{}, err
+	}
+	var manifest map[string]frontendAssets
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return frontendAssets{}, fmt.Errorf("read Vite manifest: %w", err)
+	}
+	assets := manifest["frontend/main.ts"]
+	if assets.File == "" {
+		return frontendAssets{}, fmt.Errorf("Vite manifest is missing frontend/main.ts")
+	}
+	return assets, nil
 }
 
 // Index — главная страница сайта (одностраничное приложение).

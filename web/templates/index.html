@@ -3,30 +3,45 @@
   Единственная HTML-страница сайта "Ата Энерго".
   Вся логика — в static/js (JavaScript-модули), данные берутся из /api/ и WebSocket.
 -->
-<html lang="ru" data-theme="dark">
+<html lang="ru" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b1220">
+  <meta name="theme-color" content="#f0f5fb">
   <title>Ата Энерго — мониторинг</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='8' fill='%23f5b301'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v=themes">
+  <link rel="stylesheet" href="/static/css/themes.css">
+  {{range .Frontend.CSS}}<link rel="stylesheet" href="/static/build/{{.}}">{{end}}
   <script>
     // Применяем сохранённую тему до отрисовки, чтобы не было "мигания"
-    try { document.documentElement.dataset.theme = localStorage.getItem('ata_theme') || 'dark'; } catch (e) {}
+    try {
+      const theme = localStorage.getItem('ata_theme');
+      if (theme) document.documentElement.dataset.theme = theme;
+    } catch {}
   </script>
 </head>
 <body>
   <!-- ===== Экран входа ===== -->
   <section id="login-screen" class="login hidden">
+    <div class="login-visual">
+      <div class="brand"><span class="brand-logo" aria-hidden="true"></span><div><b>Ата Энерго</b><small>Ош, Кыргызстан</small></div></div>
+      <div class="login-visual-copy">
+        <p>Солнечная энергетика</p>
+        <h1>Энергия под контролем</h1>
+        <p>Мониторинг станций, аккумуляторов и оборудования в реальном времени.</p>
+      </div>
+      <div class="solar-art" aria-hidden="true"></div>
+    </div>
     <form id="login-form" class="login-card" autocomplete="on">
       <div class="brand brand-lg">
         <span class="brand-logo"></span>
         <div><b>Ата Энерго</b><small>Мониторинг солнечных станций</small></div>
       </div>
+      <h2>Вход в систему</h2>
       <label>Логин<input name="username" required autocomplete="username" autofocus></label>
       <label>Пароль<input name="password" type="password" required autocomplete="current-password"></label>
-      <div id="login-error" class="form-error"></div>
+      <div id="login-error" class="form-error" role="alert"></div>
       <button class="btn btn-primary btn-block" type="submit">Войти</button>
       {{if .ShowDemo}}
       <div class="demo-hint">
@@ -47,11 +62,22 @@
         <span class="brand-logo"></span>
         <div><b>Ата Энерго</b><small>мониторинг</small></div>
       </div>
+      {{if .Frontend.File}}<button id="sidebar-collapse" class="btn btn-ghost" type="button" aria-expanded="true" title="Свернуть меню" aria-label="Свернуть меню">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M9 5v14"/></svg>
+      </button>{{end}}
       <nav id="nav" class="nav"></nav>
       <div class="sidebar-bottom">
         <div id="user-box" class="user-box"></div>
         <div class="sidebar-actions">
-          <button id="theme-btn" class="btn btn-ghost btn-sm" type="button">Тема</button>
+          <label for="theme-select">Цветовая тема
+            <select id="theme-select">
+              <option value="dark">Полночь · синий</option>
+              <option value="light">Облако · голубой</option>
+              <option value="sage">Шалфей · зелёный</option>
+              <option value="sand">Песок · бежевый</option>
+              <option value="slate">Сланец · серо-синий</option>
+            </select>
+          </label>
           <button id="logout-btn" class="btn btn-ghost btn-sm" type="button">Выйти</button>
         </div>
       </div>
@@ -63,6 +89,7 @@
         <button id="burger" class="burger" type="button" aria-label="Меню"><span></span></button>
         <h1 id="page-title">…</h1>
         <div class="topbar-right">
+          {{if .Frontend.File}}<button id="search-open" class="btn btn-ghost" type="button">Поиск <kbd>Ctrl K</kbd></button>{{end}}
           <span id="ws-status" class="live" title="Связь в реальном времени"><i></i><span>…</span></span>
           <a id="bell" href="#/alerts" class="bell" title="Аварии">
             <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
@@ -74,9 +101,20 @@
     </div>
   </div>
 
+  {{if .Frontend.File}}
+  <dialog id="global-search">
+    <div class="crm-head"><h2>Поиск по CRM</h2><form method="dialog"><button type="submit" class="btn btn-ghost">Закрыть</button></form></div>
+    <input type="search" placeholder="Клиенты, оборудование и заявки" aria-label="Поиск по CRM">
+    <div class="search-results" aria-live="polite"></div>
+  </dialog>
+  {{end}}
   <div id="modal-root"></div>
   <div id="toasts" class="toasts"></div>
 
-  <script type="module" src="/static/js/app.js"></script>
+  {{if .Frontend.File}}
+  <script type="module" src="/static/build/{{.Frontend.File}}"></script>
+  {{else}}
+  <script type="module">import { initialize } from '/static/js/app.js'; initialize();</script>
+  {{end}}
 </body>
 </html>

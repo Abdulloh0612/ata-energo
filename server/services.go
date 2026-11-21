@@ -2,7 +2,11 @@ package server
 
 import (
 	"ata-energo/db/repositories"
+	"ata-energo/pkg/credentialbox"
 	"ata-energo/services"
+	"context"
+	"os"
+	"time"
 )
 
 // Services aggregates all repositories and application services used by the HTTP server.
@@ -28,10 +32,11 @@ type Services struct {
 	Deye       *services.DeyeService
 	Background *services.BackgroundService
 	Collector  *services.VendorCollector
+	Catalog    *services.ProviderCatalog
 	MQTT       *services.MQTTWorker
 }
 
-func NewServices(e Essentials) Services {
+func NewServices(e Essentials) (Services, error) {
 	userRepo := repositories.NewUserRepo(e.Pool)
 	clientRepo := repositories.NewClientRepo(e.Pool)
 	modemRepo := repositories.NewModemRepo(e.Pool)
@@ -41,7 +46,20 @@ func NewServices(e Essentials) Services {
 	agentRepo := repositories.NewAgentRepo(e.Pool)
 	taskRepo := repositories.NewAgentTaskRepo(e.Pool)
 	foundRepo := repositories.NewFoundDeviceRepo(e.Pool)
-	vendorRepo := repositories.NewVendorAccountRepo(e.Pool)
+	version := os.Getenv("PROVIDER_KEY_VERSION")
+	if version == "" {
+		version = "1"
+	}
+	box, err := credentialbox.New(version, os.Getenv("PROVIDER_MASTER_KEY"), os.Getenv("PROVIDER_PREVIOUS_KEY_VERSION"), os.Getenv("PROVIDER_PREVIOUS_MASTER_KEY"))
+	if err != nil {
+		return Services{}, err
+	}
+	vendorRepo := repositories.NewVendorAccountRepo(e.Pool, box)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := vendorRepo.Prepare(ctx); err != nil {
+		return Services{}, err
+	}
 
 	offline := EnvSeconds(e.Vars[DeviceOfflineTimeoutVar], 30)
 	cloudOffline := EnvSeconds(e.Vars[DeyeOfflineTimeoutVar], 600)
@@ -50,7 +68,11 @@ func NewServices(e Essentials) Services {
 	telemetrySvc := services.NewTelemetryService(modemRepo, deviceRepo, telemetryRepo, alertRepo, modemSvc,
 		e.Hub, e.Logger, offline, cloudOffline)
 	authSvc := services.NewAuthService(userRepo, clientRepo, e.JWTMgr)
-	userSvc := services.NewUserService(userRepo)
+	userSvc := services.NewUserService(userRepo, func(ctx context.Context, role string) (bool, error) {
+		var exists bool
+		err := e.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM crm_roles WHERE code=$1)`, role).Scan(&exists)
+		return exists, err
+	})
 	clientSvc := services.NewClientService(clientRepo, userRepo, modemRepo, deviceRepo, modemSvc)
 	deviceSvc := services.NewDeviceService(deviceRepo, clientRepo, modemRepo, telemetryRepo)
 	discoverySvc := services.NewDiscoveryService(agentRepo, taskRepo, foundRepo, modemRepo, modemSvc, telemetrySvc)
@@ -93,8 +115,9 @@ func NewServices(e Essentials) Services {
 		Deye:       deyeSvc,
 		Background: background,
 		Collector:  collector,
+		Catalog:    services.NewProviderCatalog(e.Pool, map[string]services.SiteCatalogAdapter{"deye": deyeSvc}),
 		MQTT:       mqttWorker,
-	}
+	}, nil
 }
 
 // deyeCompanyID — DEYE_COMPANY_ID как число (или nil).

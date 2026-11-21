@@ -44,7 +44,11 @@ type Server struct {
 func New() (*Server, error) {
 	e := NewEssentials()
 	applySwaggerFromBaseURL(e.Vars[AppBaseURLVar])
-	s := NewServices(e)
+	s, err := NewServices(e)
+	if err != nil {
+		e.Pool.Close()
+		return nil, err
+	}
 
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  parseDurationOrDefault(e.Vars[ServerReadTimeoutVar], 15*time.Second),
@@ -110,16 +114,18 @@ func New() (*Server, error) {
 	manager := middleware.ManagerOnly()
 
 	api.Get("/me", jwt, authH.Me)
+	apihandler.RegisterCRM(api.Group("/crm", jwt), e.Pool)
+	apihandler.RegisterProviders(api.Group("/crm", jwt), e.Pool, s.Catalog)
 
 	users := api.Group("/users", jwt, manager)
 	users.Get("", authH.ListUsers)
-	users.Post("", authH.CreateUser)
+	users.Post("", middleware.AdminOnly(), authH.CreateUser)
 	users.Get("/:id", authH.GetUser)
-	users.Patch("/:id", authH.UpdateUser)
-	users.Put("/:id", authH.UpdateUser)
-	users.Delete("/:id", authH.DeleteUser)
+	users.Patch("/:id", middleware.AdminOnly(), authH.UpdateUser)
+	users.Put("/:id", middleware.AdminOnly(), authH.UpdateUser)
+	users.Delete("/:id", middleware.AdminOnly(), authH.DeleteUser)
 
-	clients := api.Group("/clients", jwt, middleware.StaffReadManagerWrite())
+	clients := api.Group("/clients", jwt, middleware.CRMInventoryAccess(true))
 	clients.Get("", clientH.List)
 	clients.Post("", clientH.Create)
 	clients.Get("/:id", clientH.Get)
@@ -128,7 +134,7 @@ func New() (*Server, error) {
 	clients.Delete("/:id", clientH.Delete)
 	clients.Get("/:id/devices", clientH.Devices)
 
-	devices := api.Group("/devices", jwt, middleware.ReadAnyManagerWrite())
+	devices := api.Group("/devices", jwt, middleware.CRMInventoryAccess(false))
 	devices.Get("", deviceH.ListDevices)
 	devices.Post("", deviceH.CreateDevice)
 	devices.Get("/:id", deviceH.GetDevice)
@@ -165,8 +171,8 @@ func New() (*Server, error) {
 	modems.Get("/:id/deye/config", staff, deyeH.Config)
 	modems.Get("/:id/deye/orders/:orderId", staff, deyeH.Order)
 	modems.Get("/:id/deye/dynamic/result/:orderId", staff, deyeH.DynamicResult)
-	modems.Post("/:id/deye/control/:command", manager, deyeH.Control)
-	modems.Post("/:id/deye/dynamic/read", manager, deyeH.DynamicRead)
+	modems.Post("/:id/deye/control/:command", middleware.AdminOnly(), deyeH.Control)
+	modems.Post("/:id/deye/dynamic/read", middleware.AdminOnly(), deyeH.DynamicRead)
 
 	alerts := api.Group("/alerts", jwt)
 	alerts.Get("", alertH.List)
@@ -194,7 +200,7 @@ func New() (*Server, error) {
 	disc.Post("/browser-bluetooth", discoveryH.BrowserBluetooth)
 
 	// ── Deye Cloud: аккаунты (admin, it_head) ─────────────────────────────────
-	dy := api.Group("/deye", jwt, manager)
+	dy := api.Group("/deye", jwt, middleware.AdminOnly())
 	dy.Post("/sync", deyeH.Sync)
 	dy.Get("/accounts", deyeH.ListAccounts)
 	dy.Post("/accounts", deyeH.CreateAccount)
@@ -255,6 +261,7 @@ func (s *Server) startBackground(ctx context.Context) {
 			e.Logger.Warn("Deye: не удалось создать аккаунт из .env", zap.Error(err))
 		}
 		go e.Collector.Run(ctx)
+		go e.Catalog.Run(ctx)
 	}
 }
 

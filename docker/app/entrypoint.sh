@@ -13,7 +13,7 @@ done
 
 if [ "${SEED_DEMO:-false}" = "true" ]; then
   echo "Seeding demo data (повторный запуск дубликатов не создаёт)..."
-  /usr/bin/app/cmd/seeddata -clients "${SEED_CLIENTS:-2}"
+  /usr/bin/app/cmd/seeddata -clients "${SEED_CLIENTS:-25}"
 fi
 
 echo "Starting server..."

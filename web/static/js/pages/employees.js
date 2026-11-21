@@ -7,9 +7,11 @@ import { api } from '../api.js';
 import { store } from '../store.js';
 import { confirmModal, esc, fmtDate, formModal, ROLE_LABELS, toast } from '../ui.js';
 
-const STAFF_ROLES = [['dispatcher', ROLE_LABELS.dispatcher], ['it_head', ROLE_LABELS.it_head], ['admin', ROLE_LABELS.admin]];
+const STAFF_ROLES = Object.entries(ROLE_LABELS).filter(([role]) => role !== 'user');
 
 export async function render(view) {
+  const canManage = store.me.role === "admin";
+  let roleOptions = STAFF_ROLES;
   view.innerHTML = `
     <div class="kpis">
       <div class="kpi" style="--c:var(--accent)"><small>Всего сотрудников</small><b data-k="all">—</b></div>
@@ -24,7 +26,7 @@ export async function render(view) {
       </div>
       <input type="search" id="em-search" placeholder="Поиск по имени, логину, телефону…">
       <span class="spacer"></span>
-      <button class="btn btn-primary" id="em-add">+ Добавить сотрудника</button>
+      ${canManage ? '<button class="btn btn-primary" id="em-add">Добавить сотрудника</button>' : ''}
     </div>
     <div class="card">
       <div class="table-wrap"><table>
@@ -58,13 +60,13 @@ export async function render(view) {
         <td><div class="user-box" style="padding:0"><span class="avatar">${esc(name[0].toUpperCase())}</span>
           <div><b>${esc(name)}</b><small>${esc(u.email || '')}</small></div></div></td>
         <td>${esc(u.username)}${u.id === store.me.id ? ' <span class="muted">(вы)</span>' : ''}</td>
-        <td><span class="role role-${u.role}">${esc(u.role_display)}</span></td>
+        <td><span class="role role-${u.role}">${esc(roleOptions.find(([code]) => code === u.role)?.[1] || u.role_display)}</span></td>
         <td>${esc(u.position || '—')}</td>
         <td class="nowrap">${esc(u.phone || '—')}</td>
         <td>${u.is_active ? '<span class="badge online">активен</span>' : '<span class="badge offline">заблокирован</span>'}</td>
         <td class="muted nowrap">${u.last_login ? fmtDate(u.last_login) : 'не входил'}</td>
-        <td class="actions"><button class="btn btn-sm" data-edit="${u.id}">Изменить</button>
-          ${u.id !== store.me.id ? `<button class="btn btn-sm btn-danger" data-del="${u.id}">Удалить</button>` : ''}</td>
+        <td class="actions">${canManage ? `<button class="btn btn-sm" data-edit="${u.id}">Изменить</button>` : ''}
+          ${canManage && u.id !== store.me.id ? `<button class="btn btn-sm btn-danger" data-del="${u.id}">Удалить</button>` : ''}</td>
       </tr>`;
     }).join('');
   }
@@ -79,7 +81,7 @@ export async function render(view) {
         { name: 'username', label: 'Логин', required: true, half: true },
         { name: 'password', label: 'Пароль', type: 'password', required: !user, half: true,
           help: user ? 'Пусто — не менять' : 'Минимум 6 символов' },
-        { name: 'role', label: 'Роль', type: 'select', required: true, options: STAFF_ROLES, half: true },
+        { name: 'role', label: 'Роль', type: 'select', required: true, options: roleOptions, half: true },
         { name: 'position', label: 'Должность', half: true },
         { name: 'phone', label: 'Телефон', type: 'tel', half: true },
         { name: 'email', label: 'Email', type: 'email', half: true },
@@ -95,7 +97,7 @@ export async function render(view) {
     });
   }
 
-  $('#em-add').onclick = () => openForm(null);
+  if (canManage) $('#em-add').onclick = () => openForm(null);
   $('#em-search').oninput = draw;
   $('#em-role').onclick = (e) => {
     const b = e.target.closest('button');
@@ -116,6 +118,10 @@ export async function render(view) {
     }
   };
 
+  if (canManage && document.documentElement.classList.contains('crm-enabled')) {
+    const roles = await api('/api/crm/roles/');
+    roleOptions = roles.map(role => [role.code, role.name]);
+  }
   await load();
   return () => {};
 }

@@ -1,6 +1,9 @@
 package types
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // Роли пользователей.
 //
@@ -13,6 +16,9 @@ const (
 	RoleITHead     = "it_head"
 	RoleDispatcher = "dispatcher"
 	RoleUser       = "user"
+	RoleCRMManager = "manager"
+	RoleTechnician = "technician"
+	RoleObserver   = "observer"
 )
 
 var RoleDisplay = map[string]string{
@@ -20,6 +26,9 @@ var RoleDisplay = map[string]string{
 	RoleITHead:     "Руководитель IT",
 	RoleDispatcher: "Диспетчер",
 	RoleUser:       "Клиент",
+	RoleCRMManager: "Менеджер",
+	RoleTechnician: "Техник",
+	RoleObserver:   "Наблюдатель",
 }
 
 func ValidRole(role string) bool {
@@ -54,7 +63,7 @@ func (u *User) IsManager() bool {
 
 // IsStaffViewer — видит ВСЕХ клиентов (admin, it_head, dispatcher).
 func (u *User) IsStaffViewer() bool {
-	return u != nil && (u.Role == RoleAdmin || u.Role == RoleITHead || u.Role == RoleDispatcher)
+	return u != nil && (ValidRole(u.Role) || strings.HasPrefix(u.Role, "crm_")) && u.Role != RoleUser
 }
 
 // UserView — пользователь для CRUD /api/users/.
@@ -64,7 +73,11 @@ type UserView struct {
 }
 
 func NewUserView(u User) UserView {
-	return UserView{User: u, RoleDisplay: RoleDisplay[u.Role]}
+	label := RoleDisplay[u.Role]
+	if label == "" {
+		label = u.Role
+	}
+	return UserView{User: u, RoleDisplay: label}
 }
 
 // UserWrite — поля для создания/изменения пользователя (PATCH: только переданные).

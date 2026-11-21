@@ -11,11 +11,12 @@ import (
 
 // UserService — CRUD пользователей (/api/users/, только admin и it_head).
 type UserService struct {
-	users repositories.UserRepository
+	users      repositories.UserRepository
+	roleExists func(context.Context, string) (bool, error)
 }
 
-func NewUserService(users repositories.UserRepository) *UserService {
-	return &UserService{users: users}
+func NewUserService(users repositories.UserRepository, roleExists func(context.Context, string) (bool, error)) *UserService {
+	return &UserService{users: users, roleExists: roleExists}
 }
 
 func (s *UserService) List(ctx context.Context, f types.UserFilter) ([]types.UserView, error) {
@@ -76,7 +77,11 @@ func (s *UserService) apply(ctx context.Context, u *types.User, w types.UserWrit
 		errs["password"] = []string{"Укажите пароль (минимум 6 символов)."}
 	}
 	if w.Role != nil {
-		if !types.ValidRole(*w.Role) {
+		exists, err := s.roleExists(ctx, *w.Role)
+		if err != nil {
+			return err
+		}
+		if !exists {
 			errs["role"] = []string{"Значения «" + *w.Role + "» нет среди допустимых вариантов."}
 		}
 		u.Role = *w.Role

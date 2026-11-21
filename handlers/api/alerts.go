@@ -67,7 +67,7 @@ func (h *AlertHandler) Get(c *fiber.Ctx) error {
 // @Success 200 {object} types.Alert
 // @Router /alerts/{id}/read/ [post]
 func (h *AlertHandler) Read(c *fiber.Ctx) error {
-	if !middleware.GetUser(c).IsStaffViewer() {
+	if u := middleware.GetUser(c); !u.IsManager() && u.Role != types.RoleDispatcher {
 		return detail(c, fiber.StatusForbidden, "Только для сотрудников.")
 	}
 	id, ok := paramID(c, "id")
@@ -95,7 +95,7 @@ func (h *AlertHandler) Read(c *fiber.Ctx) error {
 // @Success 200 {object} map[string]int
 // @Router /alerts/read_all/ [post]
 func (h *AlertHandler) ReadAll(c *fiber.Ctx) error {
-	if !middleware.GetUser(c).IsStaffViewer() {
+	if u := middleware.GetUser(c); !u.IsManager() && u.Role != types.RoleDispatcher {
 		return detail(c, fiber.StatusForbidden, "Только для сотрудников.")
 	}
 	n, err := h.alerts.MarkAllRead(c.UserContext())

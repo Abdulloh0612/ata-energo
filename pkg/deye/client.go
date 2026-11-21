@@ -112,7 +112,7 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string {
-	return fmt.Sprintf("deye: code=%s msg=%q (http %d, requestId=%s)", e.Code, e.Msg, e.HTTPStatus, e.RequestID)
+	return fmt.Sprintf("deye: code=%s (http %d, requestId=%s)", e.Code, e.HTTPStatus, e.RequestID)
 }
 
 // IsAuthError — ошибка токена (нет/просрочен/неверный) — стоит получить токен заново.
@@ -165,7 +165,7 @@ func NewClient(baseURL string, creds Credentials, httpClient *http.Client) *Clie
 	}
 	baseURL = strings.TrimSuffix(baseURL, "/v1.0")
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: 20 * time.Second}
+		httpClient = &http.Client{Timeout: 20 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	}
 	return &Client{baseURL: baseURL, creds: creds, http: httpClient}
 }
@@ -198,7 +198,10 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("deye: %s %s: %w", method, path, err)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return fmt.Errorf("deye: %s %s: ошибка соединения", method, path)
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 20<<20))
@@ -206,11 +209,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		return err
 	}
 	if err := json.Unmarshal(raw, out); err != nil {
-		snippet := string(raw)
-		if len(snippet) > 300 {
-			snippet = snippet[:300]
-		}
-		return &APIError{HTTPStatus: resp.StatusCode, Code: "invalid_json", Msg: snippet}
+		return &APIError{HTTPStatus: resp.StatusCode, Code: "invalid_json"}
 	}
 	b := out.base()
 	if resp.StatusCode >= 400 || !b.Success || (b.Code != "" && string(b.Code) != CodeSuccess) {
@@ -218,7 +217,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		if msg == "" {
 			msg = http.StatusText(resp.StatusCode)
 		}
-		return &APIError{HTTPStatus: resp.StatusCode, Code: string(b.Code), Msg: msg, RequestID: b.RequestID}
+		return &APIError{HTTPStatus: resp.StatusCode, Code: safeIdentifier(string(b.Code)), Msg: msg, RequestID: safeIdentifier(b.RequestID)}
 	}
 	return nil
 }
@@ -347,4 +346,13 @@ type AccountInfoResponse struct {
 func (c *Client) AccountInfo(ctx context.Context) (*AccountInfoResponse, error) {
 	var out AccountInfoResponse
 	return &out, c.post(ctx, "/v1.0/account/info", nil, &out)
+}
+
+func safeIdentifier(value string) string {
+	if len(value) > 100 || strings.ContainsFunc(value, func(r rune) bool {
+		return !(r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r == '-' || r == '_')
+	}) {
+		return ""
+	}
+	return value
 }

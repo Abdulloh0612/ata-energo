@@ -41,7 +41,7 @@ const ICON = {
 };
 
 // Пункты меню для каждой роли
-function menuFor(me) {
+function menuFor(me, access) {
   const items = [];
   if (me.can_view_all) {
     items.push(['#/dashboard', 'Обзор', ICON.home]);
@@ -52,6 +52,17 @@ function menuFor(me) {
     if (me.can_edit) items.push(['#/employees', 'Сотрудники', ICON.badge]);
   } else {
     items.push(['#/dashboard', 'Моя станция', ICON.sun]);
+  }
+  if (renderCRM && me.can_view_all) {
+    items.push(['#/sites', 'Объекты', ICON.sun]);
+    if (access.requests?.view) items.push(['#/requests', 'Заявки', ICON.badge]);
+    if (access.tasks?.view) items.push(['#/tasks', 'Задачи', ICON.chip]);
+    if (me.role === 'admin') {
+      items.push(['#/roles', 'Роли и права', ICON.badge]);
+      items.push(['#/activity', 'Журнал действий', ICON.radar]);
+      items.push(['#/settings', 'Настройки', ICON.chip]);
+      items.push(['#/integrations', 'Интеграции', ICON.modem]);
+    }
   }
   items.push(['#/alerts', 'Аварии', ICON.bell]);
   return items;
@@ -71,6 +82,10 @@ const ROUTES = [
   { re: /^\/alerts$/, title: () => 'Аварии', page: () => alertsPage },
 ];
 
+/** @type {(view: HTMLElement) => Promise<void | (() => void)>} */
+let renderOverview = overviewPage.render;
+/** @type {((view: HTMLElement, path: string) => Promise<void | (() => void)>) | undefined} */
+let renderCRM;
 let cleanup = null;   // функция "уборки" текущей страницы (отписки, таймеры)
 let routeToken = 0;
 
@@ -78,35 +93,50 @@ async function route() {
   const me = store.me;
   if (!me) return;
   const [path, qs] = (location.hash.slice(1) || '/dashboard').split('?');
+  const crmRoute = renderCRM && /^\/(?:requests(?:\/(?:\d+|new))?|tasks(?:\/(?:\d+|new))?|sites(?:\/[sm]\d+)?|integrations(?:\/(?:\d+|new))?|activity|roles|settings|profile|equipment\/\d+)$/.test(path);
   const r = ROUTES.find((x) => x.re.test(path));
-  if (!r || (r.staff && !me.can_view_all) || (r.manager && !me.can_edit)) {
+  if (!crmRoute && (!r || (r.staff && !me.can_view_all) || (r.manager && !me.can_edit))) {
     location.hash = '#/dashboard';
     return;
   }
-  const match = path.match(r.re);
+  const match = r ? path.match(r.re) : [];
 
   if (cleanup) { try { cleanup(); } catch { /* ничего */ } cleanup = null; }
   const token = ++routeToken;
   const view = $('view');
-  view.innerHTML = '<div class="loading">Загрузка…</div>';
-  setTitle(r.title(me));
+  view.innerHTML = crmRoute
+    ? '<div class="crm-skeleton" role="status" aria-label="Загрузка"><i></i><i></i><i></i></div>'
+    : '<div class="loading">Загрузка…</div>';
+  const crmTitle = { sites: 'Объекты', integrations: 'Интеграции', requests: 'Заявки', tasks: 'Задачи', activity: 'Журнал действий', roles: 'Роли и права', settings: 'Настройки', profile: 'Профиль', equipment: 'Оборудование' };
+  setTitle(crmRoute ? crmTitle[path.split('/')[1]] : r.title(me));
   document.querySelectorAll('#nav a').forEach((a) => a.classList.toggle('active', a.getAttribute('href') === '#' + path
     || (path.startsWith('/client/') && a.getAttribute('href') === '#/dashboard')));
   $('app').classList.remove('menu-open');
   window.scrollTo(0, 0);
 
   try {
-    const result = await r.page(me).render(view, {
+    const page = r?.page(me);
+    const renderPage = page === overviewPage ? renderOverview : page?.render;
+    const pageRoot = document.createElement('div');
+    pageRoot.className = 'page-content';
+    if (crmRoute) view.append(pageRoot); else view.replaceChildren(pageRoot);
+    if (crmRoute && !me.can_view_all && path !== '/profile') {
+      view.querySelector('.crm-skeleton')?.remove();
+      pageRoot.innerHTML = '<p class="card empty">Нет доступа</p>';
+      return;
+    }
+    const result = crmRoute ? await renderCRM(pageRoot, path) : await renderPage(pageRoot, {
       clientId: match[1] ? Number(match[1]) : me.client_id,
       query: new URLSearchParams(qs || ''),
       setTitle,
       refreshBell,
     });
     if (token !== routeToken) { result?.(); return; } // пока грузили — ушли на другую страницу
+    view.querySelector('.crm-skeleton')?.remove();
     cleanup = result;
   } catch (err) {
     if (token !== routeToken) return;
-    view.innerHTML = `<div class="card empty">Не удалось загрузить: ${esc(err.message)}</div>`;
+    view.innerHTML = `<div class="card empty">${err.status === 403 ? "Нет доступа" : "Не удалось загрузить: " + esc(err.message)}</div>`;
   }
 }
 
@@ -126,19 +156,21 @@ function drawBell() {
 async function refreshBell() {
   try { store.unreadAlerts = (await api('/api/alerts/', { params: { unread: 1 } })).length; } catch { /* ничего */ }
   drawBell();
+  store.notify({ type: 'alertCount' });
 }
 
 // ---------- Запуск приложения после входа ----------
 async function startApp() {
   const me = store.me;
-  $('login-screen').classList.add('hidden');
-  $('app').classList.remove('hidden');
 
-  $('nav').innerHTML = menuFor(me).map(([href, label, icon]) =>
-    `<a href="${href}"><svg viewBox="0 0 24 24">${icon}</svg>${label}${href === '#/alerts' ? '<span class="count hidden"></span>' : ''}</a>`).join('');
+  const access = renderCRM && me.can_view_all ? await api('/api/crm/access') : {};
+  if (store.me !== me) return;
+  store.crmAccess = access;
+  $('nav').innerHTML = menuFor(me, access).map(([href, label, icon]) =>
+    `<a href="${href}" title="${label}"><svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg><span class="nav-label">${label}</span>${href === '#/alerts' ? '<span class="count hidden"></span>' : ''}</a>`).join('');
   const name = `${me.first_name} ${me.last_name}`.trim() || me.username;
   $('user-box').innerHTML = `<span class="avatar">${esc(name[0].toUpperCase())}</span>
-    <div><b>${esc(name)}</b><small>${esc(ROLE_LABELS[me.role] || me.role)}</small></div>`;
+    <div><b>${renderCRM ? `<a href="#/profile">${esc(name)}</a>` : esc(name)}</b><small>${esc(ROLE_LABELS[me.role] || me.role)}</small></div>`;
 
   // Устройства: сотрудники видят все, клиент — только свои
   const [devices, modems] = await Promise.all([
@@ -148,9 +180,13 @@ async function startApp() {
   store.setDevices(devices);
   store.setModems(modems);
   await refreshBell();
+  if (store.me !== me) return;
+  $('app').dataset.audience = me.can_view_all ? 'staff' : 'client';
+  $('login-screen').classList.add('hidden');
+  $('app').classList.remove('hidden');
   live.start();
-  if (!location.hash) location.hash = '#/dashboard';
-  route();
+  if (!location.hash) history.replaceState(null, '', '#/dashboard');
+  void route();
 }
 
 async function boot() {
@@ -164,6 +200,7 @@ async function boot() {
 }
 
 function showLogin() {
+  ++routeToken;
   live.stop();
   if (cleanup) { cleanup(); cleanup = null; }
   store.me = null;
@@ -197,35 +234,60 @@ live.on('authLost', logout);
 setAuthLostHandler(() => { if (store.me) { toast('Сессия истекла, войдите снова', 'error'); showLogin(); } });
 
 // ---------- Кнопки и формы ----------
-$('login-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const form = e.target;
-  const btn = form.querySelector('[type=submit]');
-  $('login-error').textContent = '';
-  btn.disabled = true;
-  try {
-    store.me = await login(form.username.value.trim(), form.password.value);
-    await startApp();
-  } catch (err) {
-    $('login-error').textContent = err.message;
-  } finally {
-    btn.disabled = false;
-  }
-});
-document.querySelectorAll('[data-demo]').forEach((b) => b.addEventListener('click', () => {
-  const [u, p] = b.dataset.demo.split(':');
-  $('login-form').username.value = u;
-  $('login-form').password.value = p;
-  $('login-form').requestSubmit();
-}));
-$('logout-btn').onclick = logout;
-$('burger').onclick = () => $('app').classList.toggle('menu-open');
-$('overlay').onclick = () => $('app').classList.remove('menu-open');
-$('theme-btn').onclick = () => {
-  const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-  document.documentElement.dataset.theme = next;
-  try { localStorage.setItem('ata_theme', next); } catch { /* ничего */ }
-};
-window.addEventListener('hashchange', route);
+/** @param {typeof renderOverview} [overview]
+ * @param {typeof renderCRM} [crm] */
+export function initialize(overview = overviewPage.render, crm) {
+  renderCRM = crm;
+  document.documentElement.classList.toggle('crm-enabled', Boolean(crm));
+  renderOverview = overview;
+  $('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('[type=submit]');
+    $('login-error').textContent = '';
+    btn.disabled = true;
+    try {
+      store.me = await login(form.username.value.trim(), form.password.value);
+      await startApp();
+    } catch (err) {
+      auth.clear();
+      showLogin();
+      $('login-error').textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  document.querySelectorAll('[data-demo]').forEach((b) => b.addEventListener('click', () => {
+    const [u, p] = b.dataset.demo.split(':');
+    $('login-form').username.value = u;
+    $('login-form').password.value = p;
+    $('login-form').requestSubmit();
+  }));
+  $('logout-btn').onclick = logout;
+  const collapse = $('sidebar-collapse');
+  if (collapse) collapse.onclick = () => {
+    const collapsed = $('app').classList.toggle('sidebar-collapsed');
+    const label = collapsed ? 'Развернуть меню' : 'Свернуть меню';
+    collapse.setAttribute('aria-expanded', String(!collapsed));
+    collapse.setAttribute('aria-label', label);
+    collapse.title = label;
+  };
+  $('burger').onclick = () => $('app').classList.toggle('menu-open');
+  $('overlay').onclick = () => $('app').classList.remove('menu-open');
+  const themeSelect = $('theme-select');
+  const applyTheme = (theme) => {
+    document.documentElement.dataset.theme = theme;
+    const background = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    document.querySelector('meta[name="theme-color"]').content = background;
+  };
+  themeSelect.value = document.documentElement.dataset.theme;
+  themeSelect.value ||= 'light';
+  applyTheme(themeSelect.value);
+  themeSelect.onchange = () => {
+    applyTheme(themeSelect.value);
+    try { localStorage.setItem('ata_theme', themeSelect.value); } catch { /* ничего */ }
+  };
+  window.addEventListener('hashchange', route);
 
-boot();
+  boot();
+}

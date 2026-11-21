@@ -63,6 +63,11 @@ export function refreshAccess() {
 }
 
 // Главная функция запросов к API
+/**
+ * @param {string} path
+ * @param {{method?: string, body?: unknown, params?: Record<string, unknown>}} [options]
+ * @param {boolean} [retry]
+ */
 export async function api(path, { method = 'GET', body, params } = {}, retry = true) {
   let url = path;
   if (params) {

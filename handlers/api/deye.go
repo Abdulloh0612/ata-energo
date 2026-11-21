@@ -1,6 +1,7 @@
 package api
 
 import (
+	"ata-energo/db/repositories"
 	"context"
 	"encoding/json"
 	"errors"
@@ -68,7 +69,7 @@ func deyeFail(c *fiber.Ctx, err error) error {
 	var ae *deye.APIError
 	if errors.As(err, &ae) {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-			"detail": "Deye Cloud: " + ae.Msg, "code": ae.Code, "request_id": ae.RequestID,
+			"detail": "Deye Cloud отклонил запрос", "code": ae.Code, "request_id": ae.RequestID,
 		})
 	}
 	var fe services.FieldErrors
@@ -79,7 +80,7 @@ func deyeFail(c *fiber.Ctx, err error) error {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return detail(c, fiber.StatusGatewayTimeout, "Deye Cloud не ответил вовремя")
 	}
-	return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"detail": "Deye Cloud: " + err.Error()})
+	return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"detail": "Не удалось выполнить запрос Deye Cloud"})
 }
 
 func pageParams(c *fiber.Ctx, maxSize int) (int, int) {
@@ -137,7 +138,7 @@ func (h *DeyeHandler) CreateAccount(c *fiber.Ctx) error {
 	if err := parseBody(c, &w); err != nil {
 		return err
 	}
-	a, err := h.deye.CreateAccount(c.UserContext(), w)
+	a, err := h.deye.CreateAccount(repositories.WithVendorActor(c.UserContext(), middleware.GetUser(c).ID), w)
 	if err != nil {
 		return fail(c, err)
 	}
@@ -161,7 +162,7 @@ func (h *DeyeHandler) UpdateAccount(c *fiber.Ctx) error {
 	if err := parseBody(c, &w); err != nil {
 		return err
 	}
-	a, err := h.deye.UpdateAccount(c.UserContext(), id, w)
+	a, err := h.deye.UpdateAccount(repositories.WithVendorActor(c.UserContext(), middleware.GetUser(c).ID), id, w)
 	if err != nil {
 		return fail(c, err)
 	}
@@ -180,7 +181,7 @@ func (h *DeyeHandler) DeleteAccount(c *fiber.Ctx) error {
 	if err != nil {
 		return fail(c, err)
 	}
-	if err := h.deye.DeleteAccount(c.UserContext(), a.ID); err != nil {
+	if err := h.deye.DeleteAccount(repositories.WithVendorActor(c.UserContext(), middleware.GetUser(c).ID), a.ID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -794,7 +795,6 @@ var DeyeCommands = map[string]controlFunc{
 	// {batteryType: BATT_V|BATT_SOC|LI|NO_BATTERY}
 	"battery-type": ctrl(func(r *deye.BatteryTypeRequest, sn string) { r.DeviceSn = sn }, (*deye.Client).BatteryTypeUpdate),
 	// {content: "0103000102ABCD", timeoutSeconds}
-	"modbus": ctrl(func(r *deye.CustomControlRequest, sn string) { r.DeviceSn = sn }, (*deye.Client).CustomControl),
 	// {action: on|off, power}
 	"peak-shaving": ctrl(func(r *deye.PeakShavingRequest, sn string) { r.DeviceSn = sn }, (*deye.Client).GridPeakShavingControl),
 	// {onSOC, offSOC | onVoltage, offVoltage, onGridAlwaysOn}

@@ -1,5 +1,0 @@
-DROP TABLE IF EXISTS ratings;
-ALTER TABLE vehicles DROP COLUMN IF EXISTS telegram_enabled;
-ALTER TABLE vehicles DROP COLUMN IF EXISTS reviews_enabled;
-ALTER TABLE vehicles DROP COLUMN IF EXISTS photo_url;
-ALTER TABLE users DROP COLUMN IF EXISTS device_id;

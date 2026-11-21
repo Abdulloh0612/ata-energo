@@ -5,7 +5,10 @@
 // =============================================================================
 
 export const store = {
+  /** @type {{id: number, can_view_all: boolean} | null} */
   me: null,                 // текущий пользователь (/api/me/)
+  /** @type {{requests?: {view: boolean}, tasks?: {view: boolean}}} */
+  crmAccess: {},
   devices: new Map(),       // id устройства -> устройство
   modems: new Map(),        // id модема -> модем
   byClient: new Map(),      // id клиента -> Set(id устройств)

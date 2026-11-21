@@ -79,28 +79,20 @@ func ClientOnly() fiber.Handler {
 	}
 }
 
-// StaffReadManagerWrite — чтение (GET) для admin/it_head/dispatcher, изменение — только admin/it_head.
-func StaffReadManagerWrite() fiber.Handler {
+// CRMInventoryAccess keeps the existing client ownership checks for equipment reads.
+func CRMInventoryAccess(clients bool) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		u := GetUser(c)
 		if isSafe(c.Method()) {
-			if !u.IsStaffViewer() {
-				return detail(c, fiber.StatusForbidden, "Нужна роль admin, it_head или dispatcher.")
+			if !clients || u.IsStaffViewer() {
+				return c.Next()
 			}
-		} else if !u.IsManager() {
-			return detail(c, fiber.StatusForbidden, "Изменять данные могут только admin и it_head.")
+		} else if u.Role == types.RoleAdmin ||
+			(u.Role == types.RoleITHead && c.Method() != fiber.MethodDelete) ||
+			(u.Role == types.RoleCRMManager && (clients && c.Method() != fiber.MethodDelete || !clients && c.Method() == fiber.MethodPost)) {
+			return c.Next()
 		}
-		return c.Next()
-	}
-}
-
-// ReadAnyManagerWrite — чтение всем вошедшим (список потом фильтруется по роли), изменение — admin/it_head.
-func ReadAnyManagerWrite() fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		if !isSafe(c.Method()) && !GetUser(c).IsManager() {
-			return detail(c, fiber.StatusForbidden, "Изменять данные могут только admin и it_head.")
-		}
-		return c.Next()
+		return detail(c, fiber.StatusForbidden, "Недостаточно прав.")
 	}
 }
 
@@ -129,4 +121,13 @@ func AgentAuth(discovery *services.DiscoveryService) fiber.Handler {
 func GetAgent(c *fiber.Ctx) *types.Agent {
 	a, _ := c.Locals(agentKey).(*types.Agent)
 	return a
+}
+
+func AdminOnly() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if u := GetUser(c); u == nil || u.Role != types.RoleAdmin {
+			return detail(c, fiber.StatusForbidden, "Доступ только для администратора.")
+		}
+		return c.Next()
+	}
 }

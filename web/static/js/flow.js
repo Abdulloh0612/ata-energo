@@ -81,8 +81,11 @@ export function summarize(devices) {
     temperature: list.find(on)?.last_data?.temperature ?? null,
     error: list.map((d) => on(d) && d.last_data?.error).find(Boolean) || null,
   });
-  const bat = pack(of('battery'));
-  bat.percent = of('battery').map((d) => d.last_data?.battery_percent).find((v) => v != null) ?? null;
+  const batteries = of('battery');
+  const bat = {
+    ...pack(batteries),
+    percent: batteries.map((d) => d.last_data?.battery_percent).find((v) => v != null) ?? null,
+  };
   return {
     pv: pack(of('panel')),
     inv: pack(of('inverter')),

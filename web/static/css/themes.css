@@ -1,0 +1,99 @@
+:root {
+  --bg: #0e223d;
+  --panel: #102741;
+  --card: #152d4b;
+  --card2: #1b3656;
+  --line: #294665;
+  --text: #f1f6fd;
+  --muted: #a3b6cc;
+  --accent: #f4c75a;
+  --accent-text: var(--accent);
+  --on-accent: #18273b;
+  --focus: #83b5eb;
+  --danger-text: #fca5a5;
+  --hero-base: #102741;
+  --hero-glow: #2f6692;
+  --hero-text: #f3f7ff;
+  --hero-muted: #d0e0ef;
+  --hero-line: #426383;
+  --hero-grid: #a8d1f044;
+  --radius: 18px;
+  --shadow: 0 8px 28px #04152b25;
+  color-scheme: dark;
+}
+
+:is([data-theme="light"], [data-theme="sand"]) {
+  --panel: #fff;
+  --card: #fff;
+  --danger-text: #9f2424;
+  --shadow: 0 8px 24px #152f4b0a;
+  color-scheme: light;
+}
+
+[data-theme="light"] {
+  --bg: #f0f5fb;
+  --card2: #eaf1f8;
+  --line: #d9e4ee;
+  --text: #0e223d;
+  --muted: #4e6480;
+  --accent: #b9d5ef;
+  --accent-text: #315d87;
+  --focus: #3c72a6;
+}
+
+[data-theme="sage"] {
+  --bg: #1d2a25;
+  --panel: #23322b;
+  --card: #293a31;
+  --card2: #32463b;
+  --line: #486252;
+  --text: #f1f6ed;
+  --muted: #b7c8bc;
+  --accent: #bdd2aa;
+  --on-accent: #1d3226;
+  --focus: #a5c497;
+  --hero-base: #22332b;
+  --hero-glow: #496550;
+  --hero-muted: #dde9d9;
+  --hero-line: #67846c;
+  --hero-grid: #b4d2a744;
+}
+
+[data-theme="sand"] {
+  --bg: #f4efe6;
+  --panel: #fffaf2;
+  --card: #fffaf3;
+  --card2: #eee5d7;
+  --line: #d9cab6;
+  --text: #352d24;
+  --muted: #66584a;
+  --accent: #e4c79e;
+  --accent-text: #78522a;
+  --on-accent: #35291f;
+  --focus: #886440;
+  --hero-base: #3c3027;
+  --hero-glow: #6d5744;
+  --hero-muted: #f0e0cd;
+  --hero-line: #8d7258;
+  --hero-grid: #e4c09b44;
+}
+
+[data-theme="slate"] {
+  --bg: #262a36;
+  --panel: #2b303d;
+  --card: #323847;
+  --card2: #3b4253;
+  --line: #505a70;
+  --text: #f2f3fa;
+  --muted: #bcc3d6;
+  --accent: #c5c6e3;
+  --on-accent: #262839;
+  --focus: #aeb9da;
+  --hero-base: #2d3140;
+  --hero-glow: #515d7c;
+  --hero-muted: #dce1ef;
+  --hero-line: #6e7795;
+  --hero-grid: #b5c0e544;
+}
+
+.btn-primary { color: var(--on-accent); }

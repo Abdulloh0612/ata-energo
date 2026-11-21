@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"ata-energo/pkg/deye"
 	"ata-energo/types"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
 
@@ -87,11 +89,21 @@ func (s *DeyeService) Account(ctx context.Context, id int64) (*types.VendorAccou
 	if a == nil || a.Vendor != types.VendorDeye {
 		return nil, nil, Detail(http.StatusNotFound, "Аккаунт Deye не найден.")
 	}
+	if !validDeyeURL(a.BaseURL) {
+		return nil, nil, Detail(http.StatusBadRequest, "У аккаунта указан неподдерживаемый адрес Deye Cloud.")
+	}
 	return a, s.clientFor(a), nil
 }
 
 func (s *DeyeService) ListAccounts(ctx context.Context) ([]types.VendorAccount, error) {
 	return s.accounts.List(ctx, types.VendorDeye)
+}
+
+func validDeyeURL(base string) bool {
+	parsed, err := url.Parse(base)
+	return err == nil && parsed.Scheme == "https" && parsed.User == nil && parsed.Port() == "" &&
+		strings.HasSuffix(strings.ToLower(parsed.Hostname()), "-developer.deyecloud.com") &&
+		parsed.RawQuery == "" && parsed.Fragment == "" && (parsed.Path == "" || parsed.Path == "/" || parsed.Path == "/v1.0" || parsed.Path == "/v1.0/")
 }
 
 func (s *DeyeService) applyAccount(a *types.VendorAccount, w types.VendorAccountWrite, creating bool) error {
@@ -123,6 +135,9 @@ func (s *DeyeService) applyAccount(a *types.VendorAccount, w types.VendorAccount
 	}
 	if a.BaseURL == "" {
 		a.BaseURL = deye.BaseURLEU
+	}
+	if !validDeyeURL(a.BaseURL) {
+		errs["base_url"] = []string{"Укажите официальный HTTPS-адрес региона Deye Cloud."}
 	}
 	if a.Name == "" {
 		a.Name = "Deye Cloud"
@@ -161,9 +176,12 @@ func (s *DeyeService) CreateAccount(ctx context.Context, w types.VendorAccountWr
 }
 
 func (s *DeyeService) UpdateAccount(ctx context.Context, id int64, w types.VendorAccountWrite) (*types.VendorAccount, error) {
-	a, _, err := s.Account(ctx, id)
+	a, err := s.accounts.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
+	}
+	if a == nil || a.Vendor != types.VendorDeye {
+		return nil, Detail(http.StatusNotFound, "Аккаунт Deye не найден.")
 	}
 	if err := s.applyAccount(a, w, false); err != nil {
 		return nil, err
@@ -178,7 +196,12 @@ func (s *DeyeService) DeleteAccount(ctx context.Context, id int64) error {
 	s.mu.Lock()
 	delete(s.cache, id)
 	s.mu.Unlock()
-	return s.accounts.Delete(ctx, id)
+	err := s.accounts.Delete(ctx, id)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return Detail(http.StatusConflict, "У аккаунта есть объекты в каталоге. Отключите аккаунт, чтобы сохранить историю.")
+	}
+	return err
 }
 
 // EnsureEnvAccount — если в .env заданы DEYE_APP_ID и т.д., создаёт такой аккаунт (один раз).
@@ -196,7 +219,7 @@ func (s *DeyeService) EnsureEnvAccount(ctx context.Context, baseURL, appID, appS
 		CompanyID: companyID,
 	})
 	if err == nil {
-		s.log.Info("Deye: создан аккаунт из .env", zap.String("app_id", appID))
+		s.log.Info("Deye: создан аккаунт из .env", zap.String("source", "environment"))
 	}
 	return err
 }
@@ -392,7 +415,7 @@ func (s *DeyeService) Collect(ctx context.Context, modems []types.Modem) (map[st
 			errs = append(errs, err)
 			continue
 		}
-		if !a.IsActive {
+		if !a.IsActive || !a.ProviderEnabled {
 			continue
 		}
 		res, err := s.collectAccount(ctx, cl, list)

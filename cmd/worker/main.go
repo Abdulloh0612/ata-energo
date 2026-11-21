@@ -26,7 +26,10 @@ func main() {
 
 	e := server.NewEssentials()
 	defer e.Pool.Close()
-	s := server.NewServices(e)
+	s, err := server.NewServices(e)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

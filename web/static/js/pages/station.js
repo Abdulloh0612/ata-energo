@@ -36,10 +36,20 @@ export async function render(view, { clientId, setTitle }) {
     <div class="station-head">
       ${me.can_view_all ? '<a class="btn btn-sm" href="#/dashboard">← Все клиенты</a>' : ''}
       <h2>${esc(client.name)}</h2>
+      ${me.can_view_all && document.documentElement.classList.contains('crm-enabled') ? `<a class="btn btn-sm" href="#/sites?client=${clientId}">Объекты клиента</a>` : ''}
+      ${me.can_view_all && store.crmAccess.requests?.view
+        ? `<a class="btn btn-sm" href="#/requests?client=${clientId}">Заявки клиента</a>` : ''}
       <span class="muted">${esc(client.address || '')}${client.phone ? ' · ' + esc(client.phone) : ''}</span>
       <span class="badge" id="st-status">—</span>
     </div>
     <div id="st-modem" class="modem-bar"></div>
+    ${!me.can_view_all ? `
+      <section class="station-quick" aria-label="Станция сейчас">
+        <div class="card"><span>Выработка сейчас</span><strong data-quick="solar">—</strong></div>
+        <div class="card"><span>Заряд батареи</span><strong data-quick="battery">—</strong></div>
+        <div class="card"><span>Откуда свет в доме</span><strong data-quick="source">—</strong></div>
+      </section>` : ''}
+
 
     <div class="grid-main">
       <div class="card flow-card" id="st-flow"></div>
@@ -99,6 +109,19 @@ export async function render(view, { clientId, setTitle }) {
     const list = devices();
     const s = summarize(list);
     flow.update(s);
+    if (!me.can_view_all) {
+      const sources = [];
+      if (s.pv.power > 20) sources.push('Солнце');
+      if (s.bat.power < -20) sources.push('Батарея');
+      if (s.grid.power > 20 && !s.grid.error && s.grid.voltage) sources.push('Сеть');
+      if (s.gen.power > 20) sources.push('Генератор');
+      const hasSolarReading = list.some(d => d.device_type === 'panel' && d.status === 'online'
+        && d.last_data?.power != null);
+      set($('[data-quick="solar"]'), hasSolarReading ? fmtPower(s.pv.power) : '—');
+      set($('[data-quick="battery"]'), s.bat.online && s.bat.percent != null ? Math.round(s.bat.percent) + '%' : '—');
+      set($('[data-quick="source"]'), s.load.power > 20 && sources.length ? sources.join(' · ') : 'Не определено');
+    }
+
     const nc = (info, text) => (info.exists && !info.online ? 'нет связи' : text);
     set(stat('pv'), nc(s.pv, fmtPower(s.pv.power)));
     set(stat('pvSub'), s.pv.exists ? `${list.filter((d) => d.device_type === 'panel').length} шт.` : 'нет');

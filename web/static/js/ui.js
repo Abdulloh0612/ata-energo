@@ -43,7 +43,7 @@ export const TYPE_LABELS = {
   generator: 'Генератор', grid: 'Сеть', load: 'Нагрузка',
 };
 export const TYPE_ORDER = ['panel', 'inverter', 'battery', 'generator', 'grid', 'load'];
-export const ROLE_LABELS = { admin: 'Администратор', it_head: 'Руководитель IT', dispatcher: 'Диспетчер', user: 'Клиент' };
+export const ROLE_LABELS = { admin: 'Администратор', it_head: 'Руководитель IT', dispatcher: 'Диспетчер', manager: 'Менеджер', technician: 'Техник', observer: 'Наблюдатель', user: 'Клиент' };
 
 export function typeLabel(t) { return TYPE_LABELS[t] || t; }
 
