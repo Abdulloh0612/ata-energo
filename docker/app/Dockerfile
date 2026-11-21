@@ -37,13 +37,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /usr/src/app/tmp/serve
 # Build command executables
 RUN CGO_ENABLED=0 GOOS=linux go build -o /usr/src/app/tmp/bin/ ./cmd/seed ./cmd/seeddata ./cmd/createagent ./cmd/worker ./cmd/hashpass
 
-FROM node:22-alpine AS frontend
-WORKDIR /src
-COPY web/package.json web/package-lock.json ./
-RUN npm ci
-COPY web/ ./
-RUN npm run check && npm run build
-
 FROM alpine:3.19 AS production
 
 WORKDIR /usr/bin/app
@@ -59,9 +52,6 @@ COPY docker/app/entrypoint.sh /usr/bin/app/entrypoint.sh
 RUN sed -i 's/\r$//' /usr/bin/app/entrypoint.sh /usr/bin/app/health-check.sh && \
     chmod +x /usr/bin/app/entrypoint.sh /usr/bin/app/health-check.sh
 
-# Сайт (index.html + static) и SQL-миграции
-COPY web /usr/bin/app/web
-COPY --from=frontend /src/static/build /usr/bin/app/web/static/build
 COPY db/migrations /usr/bin/app/db/migrations
 
 # Copy server executable and migrate tool
@@ -71,8 +61,7 @@ COPY --from=builder --chmod=755 /go/bin/migrate /usr/bin/migrate
 # Copy command executables
 COPY --from=builder --chmod=755 /usr/src/app/tmp/bin/ /usr/bin/app/cmd/
 
-ENV WEB_DIR=/usr/bin/app/web \
-    SERVER_PORT=8000
+ENV SERVER_PORT=8000
 
 EXPOSE 8000
 

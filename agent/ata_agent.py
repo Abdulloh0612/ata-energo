@@ -1,7 +1,7 @@
 """Локальный агент "Ата Энерго".
 
 Устанавливается на компьютер / мини-ПК / Raspberry Pi В СЕТИ КЛИЕНТА (там, где инвертор).
-Сайт может быть где угодно в интернете — агент сам ходит к нему по HTTPS.
+Сервер может быть где угодно в интернете — агент сам ходит к нему по HTTPS.
 
 Что делает:
   1) раз в 3 сек спрашивает у сервера задачи (поиск Wi-Fi/Bluetooth, проверка устройства);
@@ -9,8 +9,8 @@
   3) для подключённых устройств регулярно читает показания (protocols.py)
      и отправляет их на сервер -> они появляются в мониторинге.
 
-Первый запуск (токен выдаётся на сайте: «Поиск инверторов» → «Добавить агента»):
-    python ata_agent.py --server https://ваш-сайт.kg --token ТОКЕН
+Первый запуск (токен выдаётся командой make agent на сервере):
+    python ata_agent.py --server https://monitoring.example.org --token ТОКЕН
 Дальше достаточно:  python ata_agent.py   (настройки сохраняются в agent_config.json)
 """
 import argparse
@@ -68,7 +68,7 @@ def load_config(args):
     if args.token:
         cfg["token"] = args.token
     if not cfg.get("server") or not cfg.get("token"):
-        sys.exit("Укажите --server и --token (токен выдаётся на сайте: «Поиск инверторов» → «Добавить агента»).")
+        sys.exit("Укажите --server и --token (токен выдаётся командой make agent на сервере).")
     CONFIG_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
     host = cfg["server"].split("//")[-1].split("/")[0].split(":")[0]
     if cfg["server"].startswith("http://") and host not in ("127.0.0.1", "localhost") and not host.startswith("192.168."):
@@ -198,7 +198,7 @@ class Agent:
                 data = self.api.call("GET", "/api/agent/poll/")
             except urllib.error.HTTPError as exc:
                 if exc.code == 401:
-                    sys.exit("Сервер не принял токен агента. Выдайте новый токен на сайте.")
+                    sys.exit("Сервер не принял токен агента. Выдайте новый токен через POST /api/agents/{id}/new_token/.")
                 print("Сервер ответил ошибкой:", exc)
                 time.sleep(10)
                 continue
@@ -231,8 +231,8 @@ class Agent:
 def main():
     """Запуск агента."""
     parser = argparse.ArgumentParser(description="Локальный агент Ата Энерго")
-    parser.add_argument("--server", help="адрес сайта, например https://monitoring.ata-energo.kg")
-    parser.add_argument("--token", help="токен агента (выдаётся на сайте)")
+    parser.add_argument("--server", help="адрес сервера, например https://monitoring.ata-energo.kg")
+    parser.add_argument("--token", help="токен агента (выдаётся на сервере)")
     args = parser.parse_args()
     cfg = load_config(args)
     api = Api(cfg["server"], cfg["token"])

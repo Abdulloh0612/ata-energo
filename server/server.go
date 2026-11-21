@@ -7,13 +7,12 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
 	agenthandler "ata-energo/handlers/agent"
 	apihandler "ata-energo/handlers/api"
-	webhandler "ata-energo/handlers/web"
 	wshandler "ata-energo/handlers/ws"
 	"ata-energo/middleware"
 
@@ -60,9 +59,8 @@ func New() (*Server, error) {
 
 	app.Use(recover.New())
 	app.Use(fiberlogger.New(fiberlogger.Config{
-		Next: func(c *fiber.Ctx) bool { // статику и WebSocket не логируем
-			p := c.Path()
-			return len(p) >= 8 && (p[:8] == "/static/" || p[:4] == "/ws/")
+		Next: func(c *fiber.Ctx) bool {
+			return strings.HasPrefix(c.Path(), "/ws/")
 		},
 	}))
 	app.Use(cors.New(cors.Config{
@@ -71,12 +69,6 @@ func New() (*Server, error) {
 		AllowMethods: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 	}))
 
-	webDir := e.Vars[WebDirVar]
-	webH, err := webhandler.NewHandler(webDir, e.Vars[AppEnvVar] != "production")
-	if err != nil {
-		return nil, fmt.Errorf("web: %w", err)
-	}
-	app.Static("/static", filepath.Join(webDir, "static"), fiber.Static{MaxAge: 3600})
 	app.Get("/swagger/*", swagger.New(swagger.Config{InstanceName: "swagger"}))
 
 	authH := apihandler.NewAuthHandler(s.Auth, s.Users)
@@ -221,9 +213,6 @@ func New() (*Server, error) {
 	api.Use(func(c *fiber.Ctx) error { // неизвестный /api/... — JSON 404
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"detail": "Страница не найдена."})
 	})
-
-	// ── Сайт (одностраничное приложение) ──────────────────────────────────────
-	app.Get("/", webH.Index)
 
 	return &Server{app: app, services: s}, nil
 }

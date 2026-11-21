@@ -3,13 +3,11 @@
 Сервер для наблюдения за оборудованием клиентов в реальном времени:
 **панели → инвертор → батарея → генератор → сеть → нагрузка**.
 
-Переписан с Python/Django (`templates/ata_energo`) на Go с сохранением API, WebSocket и сайта —
-фронтенд (`web/`) работает без изменений.
+Переписан с Python/Django (`templates/ata_energo`) на Go с сохранением API и WebSocket.
 
 | Компонент | Технология |
 |---|---|
 | Backend | Go 1.23+, Fiber v2, pgx v5, go-redis v9, golang-jwt, zap |
-| Frontend | Vite, React и TypeScript для обзора персонала, существующие JS-модули для остальных экранов |
 | БД | PostgreSQL 16 (Redis — по желанию) |
 | Realtime | WebSocket `/ws/telemetry/?token=` (Redis Pub/Sub между процессами) |
 | Источники данных | MQTT-модемы, локальный агент (`agent/`), **Deye Cloud OpenAPI**, демо-режим |
@@ -28,14 +26,14 @@
 
 ## Запуск в Docker (рекомендуется)
 
-Нужен только Docker Desktop. Бэкенд и сайт — один контейнер `app`, рядом PostgreSQL, Redis и MQTT-брокер.
+Нужен только Docker Desktop. API работает в контейнере `app`, рядом PostgreSQL, Redis и MQTT-брокер.
 
 ```bash
 copy .env.example .env          # Linux/macOS: cp .env.example .env  (поменяйте JWT_SECRET)
 docker compose up -d --build
 ```
 
-Сайт: http://localhost:8000 (тестовые входы на странице логина). При старте контейнер сам применяет
+Проверить доступность API можно через `GET http://localhost:8000/api/health`. При старте контейнер сам применяет
 миграции и (если `SEED_DEMO=true`) создаёт тестовые данные.
 
 ```bash
@@ -53,24 +51,16 @@ docker compose exec app ./cmd/createagent "Офис"   # создать аген
 cp .env.example .env                       # DATABASE_URL, JWT_SECRET
 make migrate                                # или: go run ./cmd/seed -database $DATABASE_URL -path db/migrations up
 make seed                                   # admin/admin123, ithead/ithead123, dispatcher/disp123, client1/client123
-make run                                    # http://localhost:8000
+make run                                    # http://localhost:8000/api/health
 ```
 
 Swagger: `http://localhost:8000/swagger/index.html` (`make swagger` — перегенерировать).
-
-Docker собирает фронтенд автоматически. Для запуска обновлённого интерфейса без Docker
-соберите его перед стартом Go-сервера (Node.js 22.12+):
-
-```bash
-npm --prefix web ci
-npm --prefix web run build
-```
 
 ### Команды
 
 | Команда | Что делает (аналог в Python) |
 |---|---|
-| `go run .` | сайт + API + WebSocket + MQTT + проверка offline + Deye (`runserver` + `run_mqtt`) |
+| `go run .` | API + WebSocket + MQTT + проверка offline + Deye (`runserver` + `run_mqtt`) |
 | `go run ./cmd/seeddata -clients N` | тестовые данные (`seed_data`) |
 | `go run ./cmd/createagent "Офис"` | агент поиска + токен (`create_agent`) |
 | `go run ./cmd/worker [-once]` | отдельный воркер / разовая проверка offline (`run_mqtt`, `check_offline`) |
@@ -137,8 +127,8 @@ npm --prefix web run build
 ```
 main.go              точка входа
 server/              Fiber, маршруты, DI (essentials, services, vars)
-handlers/api         REST API сайта          handlers/agent  API локального агента
-handlers/ws          WebSocket               handlers/web    index.html
+handlers/api         REST API                handlers/agent  API локального агента
+handlers/ws          WebSocket
 services/            бизнес-логика: telemetry (обработка данных), modem, client, device, discovery,
                      deye (+ драйвер сборщика), vendor_collector, background (offline + демо), mqtt
 db/                  pgx pool, redis, repositories/, migrations/
@@ -146,18 +136,16 @@ types/               сущности и DTO
 middleware/          JWT, роли, токен агента
 pkg/                 deye (клиент Deye Cloud), hub (рассылка WS), fakestation, jwt, logger, validator
 cmd/                 seeddata, createagent, worker, simulator, seed (SQL), hashpass
-web/                 сайт: templates/index.html, static/ (как во frontend/ Python-версии)
 agent/               локальный агент (Python, без изменений)
 templates/           исходники: ata_energo (Python), solar-aggregator
 ```
 
 ## Каталог провайдеров и облачные ключи
 
-Откройте **Интеграции** под администратором. Учётные данные Deye вводятся в этой
-форме и доступны серверу после расшифровки. API отдаёт только наличие учётных
-данных. Deye синхронизирует каталог объектов в PostgreSQL каждые 15 минут при
-`DEYE_ENABLED=true`. Кнопка синхронизации запускает каталог выбранного аккаунта.
-Новые объекты остаются непривязанными и доступны в разделе **Объекты**.
+Администратор может добавить аккаунт Deye через `POST /api/deye/accounts/`.
+В списке интеграций (`GET /api/crm/integrations/accounts`) API показывает наличие учётных данных. Deye синхронизирует каталог объектов в PostgreSQL каждые 15 минут при
+`DEYE_ENABLED=true`. Чтобы запустить синхронизацию вручную, вызовите `POST /api/crm/integrations/accounts/{id}/sync`.
+Новые объекты доступны через `GET /api/crm/sites`.
 
 До обновления экземпляра с существующими облачными аккаунтами создайте ключ
 (`openssl rand -base64 32`) и сохраните его в защищённом `.env` или менеджере

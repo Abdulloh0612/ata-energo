@@ -1,10 +1,10 @@
-# Ата Энерго: сервер (API + сайт + WebSocket), PostgreSQL, Redis, MQTT-брокер.
+# Ата Энерго: сервер (API + WebSocket), PostgreSQL, Redis, MQTT-брокер.
 #
 #   docker compose up -d --build     # собрать и запустить
 #   docker compose logs -f app       # логи
 #   docker compose down              # остановить (данные БД сохраняются в volume)
 #
-# Сайт: http://localhost:8000   Swagger: http://localhost:8000/swagger/index.html
+# API: http://localhost:8000/api/health   Swagger: http://localhost:8000/swagger/index.html
 # Настройки — в .env (пример: .env.example).
 
 services:
@@ -24,7 +24,6 @@ services:
       MQTT_HOST: mqtt
       MQTT_PORT: "1883"
       SERVER_PORT: "8000"
-      WEB_DIR: /usr/bin/app/web
     ports:
       - "127.0.0.1:${APP_PORT:-8000}:8000"   # только локально; на сервере перед ним Nginx (+ /ws/ с Upgrade)
     depends_on:

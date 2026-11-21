@@ -16,7 +16,6 @@ const (
 	AppEnvVar     = "APP_ENV"
 	AppBaseURLVar = "APP_BASE_URL"
 	TimeZoneVar   = "TIME_ZONE"
-	WebDirVar     = "WEB_DIR"
 
 	ServerPortVar         = "SERVER_PORT"
 	ServerReadTimeoutVar  = "SERVER_READ_TIMEOUT"
@@ -71,7 +70,7 @@ func LoadEnvVars() map[string]string {
 	}
 
 	keys := []string{
-		AppNameVar, AppEnvVar, AppBaseURLVar, TimeZoneVar, WebDirVar,
+		AppNameVar, AppEnvVar, AppBaseURLVar, TimeZoneVar,
 		ServerPortVar, ServerReadTimeoutVar, ServerWriteTimeoutVar,
 		DatabaseURLVar, DBMaxConnsVar, DBMinConnsVar, DBMaxConnLifetimeVar,
 		RedisURLVar, RedisPasswordVar, RedisDBVar,
@@ -94,7 +93,6 @@ func LoadEnvVars() map[string]string {
 		AppEnvVar:               "development",
 		AppBaseURLVar:           "http://localhost:8000",
 		TimeZoneVar:             "Asia/Bishkek",
-		WebDirVar:               "web",
 		ServerPortVar:           "8000",
 		ServerReadTimeoutVar:    "15s",
 		ServerWriteTimeoutVar:   "30s",

@@ -1,8 +1,0 @@
-{
-  "name": "ata-energo-web",
-  "private": true,
-  "type": "module",
-  "scripts": {"build": "vite build", "check": "tsc --noEmit", "watch": "vite build --watch"},
-  "dependencies": {"react": "^19.0.0", "react-dom": "^19.0.0"},
-  "devDependencies": {"@types/react": "^19.0.0", "@types/react-dom": "^19.0.0", "typescript": "^5.9.0", "vite": "^7.0.0"}
-}

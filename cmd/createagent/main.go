@@ -1,6 +1,5 @@
 // Создаёт локального агента и печатает его токен и команду запуска
-// (аналог python manage.py create_agent "Офис"). То же самое можно сделать на сайте:
-// «Поиск инверторов» → «Добавить агента».
+// (аналог python manage.py create_agent "Офис"). Также доступно через POST /api/agents/.
 //
 //	go run ./cmd/createagent/ -server http://127.0.0.1:8000 "Офис"
 package main
@@ -23,7 +22,7 @@ import (
 )
 
 func main() {
-	server := flag.String("server", "http://127.0.0.1:8000", "Адрес сайта для агента")
+	server := flag.String("server", "http://127.0.0.1:8000", "Адрес сервера для агента")
 	flag.Parse()
 	name := strings.TrimSpace(strings.Join(flag.Args(), " "))
 	if name == "" {
