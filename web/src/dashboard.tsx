@@ -7,7 +7,6 @@ import {
   TriangleAlert,
   RadioTower,
   ClipboardList,
-  Zap,
   CloudOff,
   CheckCheck,
   Check,
@@ -16,7 +15,6 @@ import {
 import {
   api,
   cache,
-  fmtNumber,
   relative,
   toast,
   useLiveDevices,
@@ -114,26 +112,7 @@ export function Dashboard() {
     requests = useList<Job[]>("/crm/requests", access.requests.view);
   const activeAlerts = useList<AlertItem[]>("/crm/active-alerts", true, 30000);
   const activeSites = sites.data?.filter((s) => !s.archived);
-  const panels = devices.data?.filter(
-    (d) =>
-      d.device_type === "panel" &&
-      d.status === "online" &&
-      typeof d.last_data?.power === "number",
-  );
-  const power = panels?.length
-    ? fmtNumber(
-        panels.reduce((sum, d) => sum + Number(d.last_data.power), 0) / 1000,
-      )
-    : "—";
   const stats = [
-    {
-      name: "Мощность сейчас",
-      value: power,
-      unit: "кВт",
-      url: "/devices?type=panel",
-      icon: Zap,
-      tone: "energy",
-    },
     {
       name: "Станции в сети",
       value: activeSites?.filter((s) => ["normal", "online"].includes(s.status))
@@ -202,9 +181,7 @@ export function Dashboard() {
               <s.icon size={18} />
               <ArrowUpRight size={15} />
             </span>
-            <span className="stat-number">
-              {s.value ?? "—"} <small>{s.unit}</small>
-            </span>
+            <span className="stat-number">{s.value ?? "—"}</span>
             <span>{s.name}</span>
           </Link>
         ))}
