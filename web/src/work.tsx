@@ -42,12 +42,20 @@ import {
   GripVertical,
   List,
   Plus,
-  Search,
   Trash2,
   X,
 } from "lucide-react";
 import { api, useList, useSession, type Grant } from "./core";
-import { PageHead, StatusBadge, Loading, Failure } from "./ui";
+import {
+  PageHead,
+  StatusBadge,
+  Loading,
+  Failure,
+  FilterChip,
+  ToggleChip,
+  SearchField,
+} from "./ui";
+import "./filters.css";
 import "./work.css";
 
 type Kind = "requests" | "tasks";
@@ -1156,7 +1164,6 @@ export function WorkPage({ kind }: { kind: Kind }) {
   };
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
   const name = names[kind];
   const id = nullableID(params.get("id"));
   const creating = params.get("new") === "1" && grants?.create;
@@ -1296,61 +1303,58 @@ export function WorkPage({ kind }: { kind: Kind }) {
           CSV
         </button>
       </div>
-      <div className="work-filters">
-        <label className="work-search">
-          <Search size={15} />
-          <input
-            ref={inputRef}
-            aria-label="Поиск по работам"
-            value={term}
+      <div className="filterbar">
+        <div className="filterbar-row">
+          <SearchField
+            label="Поиск по работам"
             placeholder="Название, клиент или исполнитель"
-            onChange={(e) => update({ q: e.target.value }, true)}
+            value={term}
+            onChange={(v) => update({ q: v || null }, true)}
           />
-          {term && (
+          <div className="filter-actions">
             <button
               type="button"
-              aria-label="Очистить поиск"
-              onClick={() => {
-                update({ q: null }, true);
-                inputRef.current?.focus();
-              }}
+              className="filter-tool"
+              aria-label="Сохранить текущий фильтр"
+              title="Сохранить текущий фильтр"
+              onClick={saveFilter}
+            >
+              <Bookmark size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="chips">
+          {(term || status || mine) && (
+            <button
+              type="button"
+              className="filter-reset"
+              onClick={() => update({ q: null, status: null, mine: null })}
             >
               <X size={14} />
+              Сбросить
             </button>
           )}
-        </label>
-        <select
-          aria-label="Фильтр по статусу"
-          value={status}
-          onChange={(e) => update({ status: e.target.value })}
-        >
-          <option value="">Все статусы</option>
-          <option value="active">Незакрытые</option>
-          {statusCodes.map((s) => (
-            <option key={s} value={s}>
-              {statuses[s]}
-            </option>
-          ))}
-        </select>
-        <label className="work-mine">
-          <input
-            type="checkbox"
-            checked={mine}
-            onChange={(e) => update({ mine: e.target.checked ? "1" : null })}
+          <FilterChip
+            title="Статус"
+            allLabel="Все статусы"
+            value={status}
+            onChange={(v) => update({ status: v || null })}
+            options={[
+              { value: "active", label: "Незакрытые" },
+              ...statusCodes.map((s) => ({ value: s, label: statuses[s] })),
+            ]}
           />
-          Назначены мне
-        </label>
-        <button
-          type="button"
-          title="Сохранить текущий фильтр"
-          onClick={saveFilter}
-        >
-          <Bookmark size={15} />
-          Сохранить фильтр
-        </button>
-        <button type="button" onClick={restoreFilter}>
-          Мой фильтр
-        </button>
+          <ToggleChip
+            on={mine}
+            onChange={(on) => update({ mine: on ? "1" : null })}
+          >
+            Назначены мне
+          </ToggleChip>
+          <button type="button" className="chip" onClick={restoreFilter}>
+            <Bookmark size={14} />
+            Мой фильтр
+          </button>
+        </div>
       </div>
       {message && (
         <p className="work-notice" role="status">

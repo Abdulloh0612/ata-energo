@@ -191,7 +191,7 @@
   .work-column:not(.is-active) {
     display: none;
   }
-  .work-column > header {
+  .work-board .work-column > header {
     display: none;
   }
   .work-card .work-drag {

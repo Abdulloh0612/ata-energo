@@ -1,0 +1,225 @@
+/* Панели фильтров: поиск + чипы + действия. */
+.filterbar {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+}
+.work-page .filterbar {
+  padding: 0;
+  margin-bottom: 1.1rem;
+}
+.filterbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.filter-search {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 42px;
+  padding: 0 0.4rem 0 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-weight: 400;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.filter-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.filter-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  padding: 0.45rem 0 !important;
+  font-size: 0.92rem;
+  color: var(--text);
+  appearance: none;
+}
+.filter-search input::-webkit-search-cancel-button {
+  display: none;
+}
+.filter-search button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+}
+.filter-search button:hover {
+  background: var(--surface-2);
+}
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.chip,
+.work-page .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 38px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 560;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.chip:hover {
+  background: var(--surface-2);
+}
+.chip svg {
+  color: var(--text-muted);
+}
+.chip.is-set,
+.work-page .chip.is-set {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+}
+.chip.is-set svg {
+  color: var(--ink-accent);
+}
+.chip-title {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.chip-value {
+  font-weight: 650;
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip-menu {
+  min-width: 12rem;
+  max-height: min(60dvh, 22rem);
+  overflow: auto;
+}
+.chip-menu [role="menuitemradio"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-height: 40px;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  outline: none;
+}
+.chip-menu [role="menuitemradio"][data-highlighted] {
+  background: var(--surface-2);
+}
+.chip-menu [role="menuitemradio"][data-state="checked"] {
+  font-weight: 650;
+  color: var(--ink-accent);
+}
+.filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+.filter-reset,
+.work-page .filter-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 38px;
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-accent);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.filter-reset:hover {
+  background: var(--surface-2);
+}
+.filter-tool,
+.work-page .filter-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-weight: 560;
+}
+.filter-tool:hover:enabled {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.filter-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+@media (max-width: 720px) {
+  .filterbar {
+    padding: 0.75rem;
+  }
+  .filter-search {
+    min-height: 46px;
+  }
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: -0.75rem;
+    padding: 0.1rem 0.75rem 0.3rem;
+    scrollbar-width: none;
+  }
+  .work-page .chips {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+  .chip,
+  .filter-reset,
+  .filter-tool,
+  .work-page .chip,
+  .work-page .filter-reset,
+  .work-page .filter-tool {
+    flex-shrink: 0;
+    min-height: 44px;
+  }
+  .filter-actions {
+    margin-left: 0;
+    flex-shrink: 0;
+  }
+  .filter-tool .tool-label {
+    display: none;
+  }
+}

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>ArchaBeshik · Station monitoring</title>
+    <title>ArchaBeshik · Мониторинг станции</title>
     <style>
       :root {
         color-scheme: light;
@@ -17,7 +17,7 @@
         --accent-soft: #e2f3f1;
         --green: #18ab77;
         --pv: #c573e4;
-        --production: #a95bda;
+        --production: #22b573;
         --import: #8971e8;
         --discharge: #62b8ee;
         --consumption: #e9ac25;
@@ -548,10 +548,20 @@
         border-radius: 50%;
         background: var(--series-color);
       }
+      /* «Экспорт» — залитая кнопка-пилюля, как в Deye Cloud */
       .export {
-        font-size: 11px;
-        color: var(--accent);
-        border-color: var(--border);
+        font-size: 12px;
+        font-weight: 600;
+        color: #fff;
+        background: var(--accent);
+        border-color: var(--accent);
+        border-radius: 999px;
+        padding: 4px 14px;
+        min-height: 30px;
+      }
+      .export:hover {
+        background: var(--accent);
+        filter: brightness(1.08);
       }
       .hint {
         font-size: 10px;
@@ -815,23 +825,23 @@
         <div class="station-top">
           <div class="station-name">
             <span class="sunmark" aria-hidden="true">☼</span
-            ><label for="station-select" hidden>Station</label
-            ><select id="station-select" aria-label="Station"></select>
+            ><label for="station-select" hidden>Станция</label
+            ><select id="station-select" aria-label="Станция"></select>
           </div>
           <div class="tools">
             <button
               class="icon-btn"
               id="refresh"
-              aria-label="Refresh station"
-              title="Refresh station"
+              aria-label="Обновить данные"
+              title="Обновить данные"
             >
               ↻
             </button>
             <button
               class="icon-btn"
               id="theme"
-              aria-label="Switch color theme"
-              title="Switch color theme"
+              aria-label="Сменить тему"
+              title="Сменить тему"
             >
               ◐
             </button>
@@ -839,24 +849,24 @@
               <button
                 class="icon-btn"
                 id="more"
-                aria-label="Station actions"
+                aria-label="Действия"
                 aria-expanded="false"
               >
                 ⋯
               </button>
               <div class="menu-pop" id="menu" hidden>
-                <button id="download-html">Download HTML</button
-                ><button id="open-info">Plant information</button>
+                <button id="download-html">Скачать HTML</button
+                ><button id="open-info">Информация о станции</button>
               </div>
             </div>
           </div>
         </div>
         <div class="meta">
-          <span class="online" id="status"><i class="dot"></i>Online</span
+          <span class="online" id="status"><i class="dot"></i>Связь установлена</span
           ><strong id="capacity"></strong><span id="online-inverters"></span
           ><span id="last-update"></span>
         </div>
-        <nav class="tabs" role="tablist" aria-label="Station views">
+        <nav class="tabs" role="tablist" aria-label="Разделы станции">
           <button
             role="tab"
             id="tab-overview"
@@ -864,7 +874,7 @@
             aria-selected="true"
             data-tab="overview"
           >
-            Overview
+            Станция
           </button>
           <button
             role="tab"
@@ -874,7 +884,7 @@
             tabindex="-1"
             data-tab="devices"
           >
-            Devices
+            Устройство
           </button>
           <button
             role="tab"
@@ -884,7 +894,7 @@
             tabindex="-1"
             data-tab="alerts"
           >
-            Alerts
+            Оповещения
           </button>
           <button
             role="tab"
@@ -894,7 +904,7 @@
             tabindex="-1"
             data-tab="info"
           >
-            Plant Info
+            Информация о станции
           </button>
         </nav>
       </header>
@@ -903,10 +913,10 @@
         <div class="top-grid">
           <section class="card" id="flow-card">
             <div class="card-head">
-              <h2>Flow Graph</h2>
-              <select id="flow-source" aria-label="Flow data source">
-                <option value="plant">Plant data</option>
-                <option value="inverter">Inverter data</option>
+              <h2>Поток энергии</h2>
+              <select id="flow-source" aria-label="Источник данных потока">
+                <option value="plant">Данные станции</option>
+                <option value="inverter">Данные инвертора</option>
               </select>
             </div>
             <div class="flow-stage">
@@ -964,37 +974,37 @@
               <div class="flow-node node-pv">
                 <div class="node-icon" aria-hidden="true">▦</div>
                 <span class="node-number" id="pv-value">—</span
-                ><span class="node-label">PV panels</span>
+                ><span class="node-label">Панели</span>
               </div>
               <div class="flow-node node-inverter">
                 <div class="node-icon" aria-hidden="true">ϟ</div>
-                <span class="node-label">Inverter</span>
+                <span class="node-label">Инвертор</span>
               </div>
               <div class="flow-node node-grid">
                 <div class="node-icon" aria-hidden="true">⌁</div>
                 <span class="node-number" id="grid-value">—</span
-                ><span class="node-state" id="grid-state">Off-grid</span>
+                ><span class="node-state" id="grid-state">Автономный</span>
               </div>
               <div class="flow-node node-battery">
                 <span class="soc-pill" id="battery-soc">—</span>
                 <div class="node-icon" aria-hidden="true">▰</div>
                 <span class="node-number" id="battery-value">—</span
-                ><span class="node-label" id="battery-direction">Battery</span>
+                ><span class="node-label" id="battery-direction">Батарея</span>
               </div>
               <div class="flow-node node-house">
                 <div class="node-icon" aria-hidden="true">⌂</div>
                 <span class="node-number" id="load-value">—</span
-                ><span class="node-label">Consumption</span>
+                ><span class="node-label">Нагрузка</span>
               </div>
             </div>
           </section>
           <div class="summary-stack">
             <section class="card summary-card" id="summary-card">
-              <h2>Summary</h2>
+              <h2>Сводка</h2>
               <div class="summary-row">
                 <span class="summary-icon" aria-hidden="true">ϟ</span>
                 <div>
-                  <p>Accumulative production</p>
+                  <p>Накопленная выработка</p>
                   <strong class="big-number" id="total-production">—</strong
                   ><span class="unit">kWh</span>
                 </div>
@@ -1002,7 +1012,7 @@
               <div class="summary-row">
                 <span class="summary-icon" aria-hidden="true">⌂</span>
                 <div>
-                  <p>Accumulative consumption</p>
+                  <p>Совокупная нагрузка</p>
                   <strong class="big-number" id="total-consumption">—</strong
                   ><span class="unit">kWh</span>
                 </div>
@@ -1010,12 +1020,12 @@
             </section>
             <section class="card daily-grid">
               <div>
-                <p>Daily Production</p>
+                <p>Дневная выработка</p>
                 <strong class="big-number" id="daily-production">—</strong
                 ><span class="unit">kWh</span>
               </div>
               <div>
-                <p>Weather</p>
+                <p>Погода</p>
                 <strong class="big-number"
                   ><span aria-hidden="true">☁ </span
                   ><span id="weather">—</span></strong
@@ -1025,7 +1035,7 @@
           </div>
           <section class="card utilization" id="solar-card">
             <div class="card-head">
-              <h2>Solar &amp; Utilization</h2>
+              <h2>Солнечная энергия и использование</h2>
               <div class="controls" id="solar-controls"></div>
             </div>
             <div class="chart-wrap">
@@ -1033,10 +1043,10 @@
                 class="donut-chart"
                 id="donuts"
                 role="img"
-                aria-label="Consumption and production energy sources"
+                aria-label="Источники потребления и использование выработки"
               ></div>
               <div class="no-data" id="donuts-empty" hidden>
-                <strong>No data</strong><span>Select another period</span>
+                <strong>Нет данных</strong><span>Выберите другой период</span>
               </div>
             </div>
           </section>
@@ -1044,55 +1054,55 @@
         <div class="bottom-grid">
           <section class="card" id="power-card">
             <div class="card-head">
-              <h2>Power Profile</h2>
+              <h2>Профиль мощности</h2>
               <div class="controls">
-                <button class="export" id="export-power">↓ Export CSV</button>
+                <button class="export" id="export-power">⇩ Экспорт</button>
                 <div id="power-controls"></div>
               </div>
             </div>
             <div
               class="legend"
               id="power-legend"
-              aria-label="Power series"
+              aria-label="Ряды мощности"
             ></div>
             <div class="chart-wrap">
               <div
                 class="chart"
                 id="power-chart"
                 role="img"
-                aria-label="Daily power and battery state of charge"
+                aria-label="Мощность за день и заряд батареи"
               ></div>
               <div class="no-data" id="power-empty" hidden>
-                <strong>No data</strong><span>Select another date</span>
+                <strong>Нет данных</strong><span>Выберите другую дату</span>
               </div>
             </div>
             <p class="hint">
-              Drag the slider or scroll inside the plot to zoom. Click a series
-              to show or hide it.
+              Масштаб — колесом мыши на графике или ползунком. Нажмите на ряд в
+              легенде, чтобы скрыть или показать его.
             </p>
           </section>
           <section class="card" id="history-card">
             <div class="card-head">
-              <h2>Generation &amp; Usage History</h2>
+              <h2>История генерации и потребления</h2>
               <div class="controls">
-                <button class="export" id="export-history">↓ Export CSV</button>
+                <button class="export" id="export-history">⇩ Экспорт</button>
                 <div id="history-controls"></div>
               </div>
             </div>
             <div
               class="legend"
               id="history-legend"
-              aria-label="Energy series"
+              aria-label="Ряды энергии"
             ></div>
             <div class="chart-wrap">
               <div
                 class="chart"
                 id="history-chart"
                 role="img"
-                aria-label="Production and usage energy history"
+                aria-label="История выработки и потребления"
               ></div>
               <div class="no-data" id="history-empty" hidden>
-                <strong>No data</strong><span>Select another period</span>
+                <strong>Нет данных</strong><span>Выберите другой период</span>
               </div>
             </div>
           </section>
@@ -1105,7 +1115,7 @@
         aria-labelledby="tab-devices"
         hidden
       >
-        <h2>Devices</h2>
+        <h2>Устройства</h2>
         <div id="device-list"></div>
       </section>
       <section
@@ -1115,7 +1125,7 @@
         aria-labelledby="tab-alerts"
         hidden
       >
-        <h2>Alerts</h2>
+        <h2>Оповещения</h2>
         <div id="alert-list"></div>
       </section>
       <section
@@ -1125,7 +1135,7 @@
         aria-labelledby="tab-info"
         hidden
       >
-        <h2>Plant Info</h2>
+        <h2>Информация о станции</h2>
         <dl class="info-grid" id="plant-info"></dl>
       </section>
     </main>
@@ -1184,7 +1194,7 @@
             alerts: [
               {
                 time: "2026-11-22 11:08",
-                text: "Grid disconnected · operating off-grid",
+                text: "Сеть отключена · автономная работа",
                 kind: "warning",
               },
             ],
@@ -1336,11 +1346,11 @@
             minute < 360
               ? 0
               : daylight *
-                (1.1 + 0.55 * Math.sin(i * 1.63) + 0.3 * Math.cos(i * 0.7));
+                (1.1 + 0.12 * Math.sin(i * 0.31) + 0.06 * Math.cos(i * 0.9));
           const load =
             minute < 360
-              ? 0.025 + 0.014 * Math.sin(i * 0.4)
-              : 0.12 + daylight * (0.42 + 0.23 * Math.sin(i * 0.73));
+              ? 0.025 + 0.006 * Math.sin(i * 0.4)
+              : 0.12 + daylight * (0.42 + 0.06 * Math.sin(i * 0.37));
           if (minute === 668)
             return {
               minute: 668,
@@ -1386,22 +1396,22 @@
           .trim();
       };
       const powerSeries = [
-        ["production", "Production", "production"],
-        ["pv", "PV", "pv"],
-        ["generator", "Generator", "generator"],
-        ["gridInverter", "Grid-tied Inverter Power", "grid-inverter"],
-        ["grid", "Grid", "grid"],
-        ["battery", "Battery", "battery"],
-        ["consumption", "Consumption", "consumption"],
+        ["production", "Производство", "production"],
+        ["pv", "СЭС", "pv"],
+        ["generator", "Генератор", "generator"],
+        ["gridInverter", "Мощность сетевого инвертора", "grid-inverter"],
+        ["grid", "Сеть", "grid"],
+        ["battery", "Аккумулятор", "battery"],
+        ["consumption", "Потребление", "consumption"],
         ["soc", "SOC", "soc"],
       ];
       const historySeries = [
-        ["production", "Daily Production", "green"],
-        ["discharge", "Daily Discharge", "discharge"],
-        ["purchased", "Daily Purchased", "import"],
-        ["consumption", "Daily Consumption", "consumption"],
-        ["charge", "Daily Charge", "charge"],
-        ["feedIn", "Daily Grid Feed-in", "export"],
+        ["production", "Дневная выработка", "green"],
+        ["discharge", "Суточный разряд", "discharge"],
+        ["purchased", "Ежедневная покупка", "import"],
+        ["consumption", "Суточная нагрузка", "consumption"],
+        ["charge", "Суточный заряд", "charge"],
+        ["feedIn", "Суточный экспорт", "export"],
       ];
       let station = crm ? null : mockData.stations[0],
         stations = crm ? [] : mockData.stations;
@@ -1523,16 +1533,16 @@
         $("battery-soc").textContent = number(f.soc, 0) + "%";
         $("battery-direction").textContent =
           f.battery > 0
-            ? "Charging"
+            ? "Заряд"
             : f.battery < 0
-              ? "Discharging"
-              : "Battery";
+              ? "Разряд"
+              : "Батарея";
         $("grid-state").textContent =
           f.offGrid === true
-            ? "Off-grid"
+            ? "Автономный"
             : f.offGrid === false
-              ? "On-grid"
-              : "Grid";
+              ? "Сеть"
+              : "Сеть";
         $("grid-state").style.color = f.offGrid ? css("danger") : css("green");
         $("grid-error").style.display = $("grid-error-label").style.display =
           f.offGrid ? "" : "none";
@@ -1593,31 +1603,31 @@
           }),
         );
         $("station-select").value = station?.id || selected;
-        document.title = (station?.name || "Station") + " · Monitoring";
+        document.title = (station?.name || "Станция") + " · Мониторинг";
         $("capacity").textContent =
           typeof station?.capacity === "number"
             ? number(station.capacity, 0) + " kWp"
             : "— kWp";
         $("status").lastChild.textContent = station?.online
-          ? "Online"
-          : "Offline";
+          ? "Связь установлена"
+          : "Нет связи";
         $("status").style.color = css(station?.online ? "green" : "muted");
         $("online-inverters").textContent =
-          "Online Inverter " + (station?.onlineInverters ?? "—");
+          "Онлайн инвертор " + (station?.onlineInverters ?? "—");
         $("last-update").textContent =
-          "Last update " + (station?.updated || "—");
+          "Последнее обновление " + (station?.updated || "—");
         const summary = station?.summary || {};
         $("total-production").textContent = number(summary.production);
         $("total-consumption").textContent = number(summary.consumption);
         $("daily-production").textContent = number(summary.daily);
         $("weather").textContent = number(summary.weather, 0);
         const info = [
-          ["Station", station?.name],
-          ["Capacity", station?.capacity ? station.capacity + " kWp" : null],
-          ["Address", station?.address],
-          ["Time zone", station?.timezone],
-          ["Data source", crm ? "Deye Cloud API" : "Mock snapshot"],
-          ["Last update", station?.updated],
+          ["Станция", station?.name],
+          ["Мощность", station?.capacity ? station.capacity + " kWp" : null],
+          ["Адрес", station?.address],
+          ["Часовой пояс", station?.timezone],
+          ["Источник данных", crm ? "Deye Cloud API" : "Демо-данные"],
+          ["Последнее обновление", station?.updated],
         ];
         $("plant-info").replaceChildren(
           ...info.map(function (item) {
@@ -1640,7 +1650,7 @@
         list.replaceChildren();
         if (!devices.length) {
           list.className = "no-data";
-          list.textContent = "No devices";
+          list.textContent = "Устройств нет";
           return;
         }
         list.className = "";
@@ -1652,10 +1662,10 @@
             " · " +
             d.deviceSn +
             " · " +
-            (d.online ? "Online" : "Offline") +
+            (d.online ? "в сети" : "нет связи") +
             " · " +
             (d.metrics?.length || 0) +
-            " measurements";
+            " показателей";
           const dl = document.createElement("dl");
           dl.className = "metrics";
           (d.metrics || []).forEach(function (p) {
@@ -1679,12 +1689,12 @@
         const alerts = station?.alerts;
         if (!alerts) {
           list.className = "no-data";
-          list.textContent = "Cloud alerts have not been loaded";
+          list.textContent = "Оповещения из облака ещё не загружены";
           return;
         }
         if (!alerts.length) {
           list.className = "no-data";
-          list.textContent = "No alerts in this period";
+          list.textContent = "Оповещений за этот период нет";
           return;
         }
         list.className = "";
@@ -1778,21 +1788,21 @@
             ];
         const pies = [
           {
-            name: "Consumption",
+            name: "Потребление",
             total: data.consumption,
             items: [
-              ["PV", data.pvUsed, "green"],
-              ["Import", data.purchased, "import"],
-              ["Discharge", data.discharge, "discharge"],
+              ["СЭС", data.pvUsed, "green"],
+              ["Импорт", data.purchased, "import"],
+              ["Разряд", data.discharge, "discharge"],
             ],
           },
           {
-            name: "Production",
+            name: "СЭС",
             total: data.production,
             items: [
-              ["Consumption", data.pvUsed, "consumption"],
-              ["Charge", data.charge, "charge"],
-              ["Export", data.feedIn, "export"],
+              ["Потребление", data.pvUsed, "consumption"],
+              ["Заряд", data.charge, "charge"],
+              ["Экспорт", data.feedIn, "export"],
             ],
           },
         ];
@@ -2171,11 +2181,11 @@
         if (context !== "power") {
           const group = document.createElement("div");
           group.className = "period-switch";
-          group.setAttribute("aria-label", context + " period");
+          group.setAttribute("aria-label", "Период");
           ["M", "Y", "T"].forEach(function (mode) {
             const b = document.createElement("button");
-            b.textContent = mode;
-            b.title = { M: "Month", Y: "Year", T: "Total" }[mode];
+            b.textContent = { M: "М", Y: "Г", T: "За все время" }[mode];
+            b.title = { M: "Месяц", Y: "Год", T: "За все время" }[mode];
             b.setAttribute("aria-label", b.title);
             b.setAttribute("aria-pressed", String(p.mode === mode));
             b.onclick = function () {
@@ -2196,20 +2206,20 @@
         prev.textContent = "‹";
         prev.setAttribute(
           "aria-label",
-          "Previous " +
-            (p.mode === "D" ? "day" : p.mode === "M" ? "month" : "year"),
+          "Назад: " +
+            (p.mode === "D" ? "предыдущий день" : p.mode === "M" ? "предыдущий месяц" : "предыдущий год"),
         );
         prev.onclick = function () {
           changePeriod(context, -1);
         };
         next.textContent = "›";
-        next.setAttribute("aria-label", "Next period");
+        next.setAttribute("aria-label", "Следующий период");
         next.disabled =
           p.mode === "T" || !nowDate || p.date >= periodMax(p.mode);
         next.onclick = function () {
           changePeriod(context, 1);
         };
-        input.setAttribute("aria-label", context + " date");
+        input.setAttribute("aria-label", "Дата");
         input.type =
           p.mode === "D"
             ? "date"
@@ -2218,7 +2228,7 @@
               : p.mode === "Y"
                 ? "number"
                 : "text";
-        input.value = p.mode === "T" ? "All time" : p.date;
+        input.value = p.mode === "T" ? "За все время" : p.date;
         input.max = periodMax(p.mode) || "";
         if (p.mode === "Y") {
           input.min = "1970";
@@ -2243,7 +2253,7 @@
                 ? /^\d{4}-\d{2}$/.test(value)
                 : /^\d{4}-\d{2}-\d{2}$/.test(value);
           if (!valid || value > periodMax(p.mode)) {
-            notify("Choose a valid date up to " + periodMax(p.mode));
+            notify("Выберите дату не позже " + periodMax(p.mode));
             input.value = p.date;
             return;
           }
@@ -2341,7 +2351,7 @@
         setTimeout(function () {
           renderHeader();
           setBusy("flow", false);
-          notify("Snapshot refreshed");
+          notify("Данные обновлены");
         }, 350);
         ["solar", "power", "history"].forEach(requestData);
       };
@@ -2390,7 +2400,7 @@
             download("station-dashboard.html", html, "text/html");
           })
           .catch(function () {
-            notify("Save this page as HTML from your browser.");
+            notify("Сохраните страницу как HTML через меню браузера.");
           });
         $("menu").hidden = true;
       };
@@ -2398,7 +2408,7 @@
         download(
           "power-" + periods.power.date + ".csv",
           csv(state.power || [], [
-            ["minute", "Minutes after midnight"],
+            ["minute", "Минут от полуночи"],
             ...powerSeries.map(function (s) {
               return [s[0], s[1] + (s[0] === "soc" ? " (%)" : " (kW)")];
             }),
@@ -2413,7 +2423,7 @@
             periods.history.date +
             ".csv",
           csv(state.history || [], [
-            ["date", "Period"],
+            ["date", "Период"],
             ...historySeries.map(function (s) {
               return [s[0], s[1] + " (kWh)"];
             }),
@@ -2513,13 +2523,13 @@
       });
       if (!window.echarts) {
         $("notice").textContent =
-          "Chart library could not load. Check your internet connection and refresh.";
+          "Не удалось загрузить библиотеку графиков. Обновите страницу.";
         $("notice").hidden = false;
       }
       if (crm) {
         $("theme").hidden = true;
         setBusy("flow", true);
-        $("download-html").textContent = "Open standalone HTML";
+        $("download-html").textContent = "Открыть отдельно";
         send("ready");
       } else {
         renderHeader();

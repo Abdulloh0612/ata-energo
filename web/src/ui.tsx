@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, RadioTower, RotateCw, Layers3, Sun } from "lucide-react";
+import * as Menu from "@radix-ui/react-dropdown-menu";
+import {
+  X,
+  RadioTower,
+  RotateCw,
+  Layers3,
+  Sun,
+  Search,
+  Check,
+  ChevronDown,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 export function Brand() {
   return (
@@ -209,5 +219,120 @@ export function LiveValue({ value }: { value: unknown }) {
             maximumFractionDigits: 1,
           })}
     </>
+  );
+}
+
+export type ChipOption = { value: string; label: string };
+/** Чип-фильтр: кнопка-«таблетка» с выпадающим списком вариантов. */
+export function FilterChip({
+  title,
+  value,
+  options,
+  onChange,
+  allLabel,
+}: {
+  title: string;
+  value: string;
+  options: ChipOption[];
+  onChange: (value: string) => void;
+  allLabel?: string;
+}) {
+  const current = options.find((o) => o.value === value);
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        className={"chip" + (current ? " is-set" : "")}
+        aria-label={title + (current ? ": " + current.label : "")}
+      >
+        <span className="chip-title">{title}</span>
+        {current && <b className="chip-value">{current.label}</b>}
+        <ChevronDown size={14} aria-hidden="true" />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Content
+          className="popover chip-menu"
+          sideOffset={6}
+          align="start"
+        >
+          <Menu.RadioGroup value={value} onValueChange={onChange}>
+            <Menu.RadioItem value="">
+              {allLabel ?? "Все"}
+              <Menu.ItemIndicator>
+                <Check size={14} />
+              </Menu.ItemIndicator>
+            </Menu.RadioItem>
+            {options.map((o) => (
+              <Menu.RadioItem key={o.value} value={o.value}>
+                {o.label}
+                <Menu.ItemIndicator>
+                  <Check size={14} />
+                </Menu.ItemIndicator>
+              </Menu.RadioItem>
+            ))}
+          </Menu.RadioGroup>
+        </Menu.Content>
+      </Menu.Portal>
+    </Menu.Root>
+  );
+}
+/** Чип-переключатель (вкл/выкл). */
+export function ToggleChip({
+  on,
+  onChange,
+  children,
+}: {
+  on: boolean;
+  onChange: (on: boolean) => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={"chip" + (on ? " is-set" : "")}
+      aria-pressed={on}
+      onClick={() => onChange(!on)}
+    >
+      {on && <Check size={14} aria-hidden="true" />}
+      {children}
+    </button>
+  );
+}
+/** Поле поиска для панелей фильтров. */
+export function SearchField({
+  value,
+  onChange,
+  placeholder,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  label: string;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <label className="filter-search">
+      <Search size={16} aria-hidden="true" />
+      <input
+        ref={input}
+        type="search"
+        aria-label={label}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {value && (
+        <button
+          type="button"
+          aria-label="Очистить поиск"
+          onClick={() => {
+            onChange("");
+            input.current?.focus();
+          }}
+        >
+          <X size={15} />
+        </button>
+      )}
+    </label>
   );
 }

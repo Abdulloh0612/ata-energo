@@ -1,4 +1,5 @@
-import { LiveValue } from "./ui";
+import { FilterChip, LiveValue, SearchField } from "./ui";
+import "./filters.css";
 import { StationDashboard } from "./station-dashboard";
 import { validateForm } from "./form";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -508,7 +509,6 @@ function Filters({
   saveKey: string;
   exportCSV: () => void;
 }) {
-  const input = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState(() => {
     try {
       return localStorage.getItem(saveKey);
@@ -533,68 +533,87 @@ function Filters({
       setNotice("Браузер не разрешил сохранить фильтр");
     }
   }
+  const active = filters.filter((f) => query.get(f.key)).length;
+  const hasQuery = !!query.get("q");
   return (
-    <div className="inv-filters">
-      <div className="inv-search">
-        <Search size={16} />
-        <input
-          ref={input}
-          aria-label="Искать в списке"
+    <div className="filterbar inv-filters">
+      <div className="filterbar-row">
+        <SearchField
+          label="Искать в списке"
           placeholder="Поиск в списке"
           value={query.get("q") || ""}
-          onChange={(e) => set("q", e.target.value)}
+          onChange={(v) => set("q", v)}
         />
-        {query.get("q") && (
+        <div className="filter-actions">
           <button
-            aria-label="Очистить поиск"
+            type="button"
+            className="filter-tool"
+            aria-label="Сохранить текущие фильтры"
+            title="Сохранить текущие фильтры"
+            onClick={save}
+          >
+            <Bookmark size={16} />
+          </button>
+          <button
+            type="button"
+            className="filter-tool"
+            aria-label="Скачать CSV"
+            title="Скачать CSV"
+            onClick={exportCSV}
+          >
+            <Download size={16} />
+            <span className="tool-label">CSV</span>
+          </button>
+        </div>
+      </div>
+      <div className="chips">
+        {(active > 0 || hasQuery) && (
+          <button
+            type="button"
+            className="filter-reset"
             onClick={() => {
-              set("q", "");
-              input.current?.focus();
+              const next = new URLSearchParams(query);
+              next.delete("q");
+              for (const f of filters) next.delete(f.key);
+              change(next);
+              setNotice("");
             }}
           >
-            <X size={15} />
+            <X size={14} />
+            Сбросить{active ? " (" + active + ")" : ""}
+          </button>
+        )}
+        {filters.map((f) => (
+          <FilterChip
+            key={f.key}
+            title={f.title
+              .replace(/^Все /, "")
+              .replace(/^./, (c) => c.toUpperCase())}
+            allLabel={/^Все /.test(f.title) ? f.title : "Любое"}
+            value={query.get(f.key) || ""}
+            options={f.options.map(([value, label]) => ({ value, label }))}
+            onChange={(v) => set(f.key, v)}
+          />
+        ))}
+        {saved !== null && (
+          <button
+            type="button"
+            className="chip"
+            onClick={() => {
+              change(new URLSearchParams(saved));
+              setNotice("Фильтр применён");
+            }}
+          >
+            <Bookmark size={14} />
+            Мой фильтр
           </button>
         )}
       </div>
-      {filters.map((f) => (
-        <select
-          aria-label={f.title}
-          key={f.key}
-          value={query.get(f.key) || ""}
-          onChange={(e) => set(f.key, e.target.value)}
-        >
-          <option value="">{f.title}</option>
-          {f.options.map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-      ))}
-      <button
-        className="inv-icon"
-        aria-label="Сохранить текущие фильтры"
-        title="Сохранить текущие фильтры"
-        onClick={save}
-      >
-        <Bookmark size={16} />
-      </button>
-      {saved !== null && (
-        <button
-          className="inv-mini"
-          onClick={() => {
-            change(new URLSearchParams(saved));
-            setNotice("Фильтр применён");
-          }}
-        >
-          Мой фильтр
-        </button>
+      {notice && (
+        <small className="filter-note" role="status">
+          {notice}
+        </small>
       )}
-      <button className="inv-mini" onClick={exportCSV}>
-        <Download size={15} />
-        CSV
-      </button>
-      {notice && <small role="status">{notice}</small>}
     </div>
   );
 }

@@ -77,6 +77,17 @@ function dateInZone(date: Date, timezone: string) {
     day: "2-digit",
   }).format(date);
 }
+// Смещение часового пояса как в Deye Cloud: "UTC+06:00".
+function utcOffset(date: Date, timezone: string) {
+  const name = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    timeZoneName: "longOffset",
+  })
+    .formatToParts(date)
+    .find((p) => p.type === "timeZoneName")?.value;
+  if (!name || name === "GMT") return "UTC+00:00";
+  return name.replace("GMT", "UTC");
+}
 function cloudDate(value: string | null | undefined) {
   if (!value) return null;
   const numeric = Number(value);
@@ -301,7 +312,7 @@ export function StationDashboard({ site }: { site: Station }) {
         updated: date
           ? date.toLocaleString("sv-SE", { timeZone: site.timezone }) +
             " (" +
-            site.timezone +
+            utcOffset(date, site.timezone) +
             ")"
           : null,
         flow: stationFlow,
@@ -357,7 +368,7 @@ export function StationDashboard({ site }: { site: Station }) {
           post({
             type: "error",
             message:
-              err instanceof Error ? err.message : "Summary could not load",
+              err instanceof Error ? err.message : "Не удалось загрузить сводку",
           });
       }
     }
@@ -417,7 +428,7 @@ export function StationDashboard({ site }: { site: Station }) {
                   type: "alerts",
                   value: reply.stationAlertItems.map((a) => ({
                     time: new Date(a.alertStartTime * 1000).toLocaleString(
-                      "en-GB",
+                      "sv-SE",
                       { timeZone: site.timezone },
                     ),
                     text: a.alertName,
@@ -430,7 +441,7 @@ export function StationDashboard({ site }: { site: Station }) {
                   message:
                     err instanceof Error
                       ? err.message
-                      : "Alerts could not load",
+                      : "Не удалось загрузить оповещения",
                 });
             }
           }
@@ -466,7 +477,7 @@ export function StationDashboard({ site }: { site: Station }) {
                 error:
                   err instanceof Error
                     ? err.message
-                    : "Cloud data could not load",
+                    : "Не удалось загрузить данные из облака",
               });
           }
           break;

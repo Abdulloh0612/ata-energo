@@ -86,6 +86,14 @@ func New() (*Server, error) {
 		return c.SendFile("web/dist/station-dashboard.html")
 	})
 	app.Static("/assets", "web/dist/assets", fiber.Static{MaxAge: 31536000})
+	// Файлы из web/public (Vite копирует их в корень dist): библиотека графиков дашборда станции,
+	// иконка и манифест. Без этих маршрутов они уходили в 404, и графики дашборда не рисовались.
+	app.Static("/vendor", "web/dist/vendor", fiber.Static{MaxAge: 86400})
+	app.Get("/favicon.svg", func(c *fiber.Ctx) error { return c.SendFile("web/dist/favicon.svg") })
+	app.Get("/manifest.webmanifest", func(c *fiber.Ctx) error {
+		c.Set(fiber.HeaderContentType, "application/manifest+json")
+		return c.SendFile("web/dist/manifest.webmanifest")
+	})
 	app.Get("*", func(c *fiber.Ctx) error {
 		if strings.Contains(c.Path(), ".") || strings.HasPrefix(c.Path(), "/assets/") {
 			return fiber.ErrNotFound
