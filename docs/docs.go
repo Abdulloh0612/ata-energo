@@ -1786,6 +1786,127 @@ const docTemplate = `{
                 }
             }
         },
+        "/crm/sites/{id}/devices/{device}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Объекты"
+                ],
+                "summary": "Полные показатели инвертора станции",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID устройства Deye из списка станции",
+                        "name": "device",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/sites/{id}/devices/{device}/alerts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Объекты"
+                ],
+                "summary": "Аварии инвертора за последние 30 дней",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID устройства Deye",
+                        "name": "device",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/deye.DeviceAlertListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/sites/{id}/devices/{device}/history": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Объекты"
+                ],
+                "summary": "История выбранных параметров инвертора",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID устройства Deye",
+                        "name": "device",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Период и ключи измерений",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.inverterHistoryInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/deye.DeviceHistoryResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/crm/sites/{id}/history": {
             "get": {
                 "security": [
@@ -4415,6 +4536,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "warranty_until": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.inverterHistoryInput": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "measurePoints": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "mode": {
                     "type": "string"
                 }
             }

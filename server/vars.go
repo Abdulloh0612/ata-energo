@@ -111,7 +111,7 @@ func LoadEnvVars() map[string]string {
 		DemoIntervalVar:         "2",
 		DeyeEnabledVar:          "true",
 		DeyeBaseURLVar:          "https://eu1-developer.deyecloud.com",
-		DeyePollIntervalVar:     "60",
+		DeyePollIntervalVar:     "180",
 		DeyeOfflineTimeoutVar:   "600",
 	}
 	for k, def := range defaults {

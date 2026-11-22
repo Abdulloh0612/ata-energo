@@ -66,6 +66,10 @@ func NewDeyeHandler(d *services.DeyeService, modems *services.ModemService, coll
 
 // deyeFail — ошибки Deye Cloud отдаём как 502 с понятным текстом.
 func deyeFail(c *fiber.Ctx, err error) error {
+	var httpError *fiber.Error
+	if errors.As(err, &httpError) {
+		return httpError
+	}
 	var ae *deye.APIError
 	if errors.As(err, &ae) {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{

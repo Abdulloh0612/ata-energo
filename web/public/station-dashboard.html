@@ -164,7 +164,8 @@
         color: var(--accent);
         font-size: 26px;
       }
-      #station-select {
+      #station-select,
+      #station-title {
         font-size: 24px;
         font-weight: 680;
         border: 0;
@@ -344,6 +345,25 @@
         transform: translate(-50%, -50%);
         font-size: 12px;
         white-space: nowrap;
+      }
+      button.flow-node {
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: var(--ink);
+      }
+      #station-title {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .station-name {
+        flex-wrap: wrap;
+        min-width: 0;
+      }
+      #station-client {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        max-width: 100%;
       }
       .node-pv {
         left: 13%;
@@ -760,7 +780,8 @@
           height: 32px;
           font-size: 22px;
         }
-        #station-select {
+        #station-select,
+        #station-title {
           font-size: 20px;
           max-width: 205px;
         }
@@ -827,6 +848,8 @@
             <span class="sunmark" aria-hidden="true">☼</span
             ><label for="station-select" hidden>Станция</label
             ><select id="station-select" aria-label="Станция"></select>
+            <h1 id="station-title" hidden></h1>
+            <button id="station-client" hidden></button>
           </div>
           <div class="tools">
             <button
@@ -862,7 +885,8 @@
           </div>
         </div>
         <div class="meta">
-          <span class="online" id="status"><i class="dot"></i>Связь установлена</span
+          <span class="online" id="status"
+            ><i class="dot"></i>Связь установлена</span
           ><strong id="capacity"></strong><span id="online-inverters"></span
           ><span id="last-update"></span>
         </div>
@@ -971,31 +995,31 @@
                   !
                 </text>
               </svg>
-              <div class="flow-node node-pv">
+              <button type="button" class="flow-node node-pv">
                 <div class="node-icon" aria-hidden="true">▦</div>
                 <span class="node-number" id="pv-value">—</span
                 ><span class="node-label">Панели</span>
-              </div>
-              <div class="flow-node node-inverter">
+              </button>
+              <button type="button" class="flow-node node-inverter">
                 <div class="node-icon" aria-hidden="true">ϟ</div>
                 <span class="node-label">Инвертор</span>
-              </div>
-              <div class="flow-node node-grid">
+              </button>
+              <button type="button" class="flow-node node-grid">
                 <div class="node-icon" aria-hidden="true">⌁</div>
                 <span class="node-number" id="grid-value">—</span
                 ><span class="node-state" id="grid-state">Автономный</span>
-              </div>
-              <div class="flow-node node-battery">
+              </button>
+              <button type="button" class="flow-node node-battery">
                 <span class="soc-pill" id="battery-soc">—</span>
                 <div class="node-icon" aria-hidden="true">▰</div>
                 <span class="node-number" id="battery-value">—</span
                 ><span class="node-label" id="battery-direction">Батарея</span>
-              </div>
-              <div class="flow-node node-house">
+              </button>
+              <button type="button" class="flow-node node-house">
                 <div class="node-icon" aria-hidden="true">⌂</div>
                 <span class="node-number" id="load-value">—</span
                 ><span class="node-label">Нагрузка</span>
-              </div>
+              </button>
             </div>
           </section>
           <div class="summary-stack">
@@ -1532,11 +1556,7 @@
         $("load-value").textContent = valuePower(f.load);
         $("battery-soc").textContent = number(f.soc, 0) + "%";
         $("battery-direction").textContent =
-          f.battery > 0
-            ? "Заряд"
-            : f.battery < 0
-              ? "Разряд"
-              : "Батарея";
+          f.battery > 0 ? "Заряд" : f.battery < 0 ? "Разряд" : "Батарея";
         $("grid-state").textContent =
           f.offGrid === true
             ? "Автономный"
@@ -1603,6 +1623,16 @@
           }),
         );
         $("station-select").value = station?.id || selected;
+        $("station-select").hidden = crm;
+        $("station-select").disabled = crm;
+        $("station-title").hidden = !crm;
+        $("station-title").textContent = station?.name || "Станция";
+        $("station-client").hidden = !crm || !station?.client;
+        $("station-client").textContent = station?.client?.name || "";
+        $("station-client").setAttribute(
+          "aria-label",
+          "Открыть клиента " + (station?.client?.name || ""),
+        );
         document.title = (station?.name || "Станция") + " · Мониторинг";
         $("capacity").textContent =
           typeof station?.capacity === "number"
@@ -1626,7 +1656,16 @@
           ["Мощность", station?.capacity ? station.capacity + " kWp" : null],
           ["Адрес", station?.address],
           ["Часовой пояс", station?.timezone],
-          ["Источник данных", crm ? "Deye Cloud API" : "Демо-данные"],
+          [
+            "Источник данных",
+            crm
+              ? station?.provider_code === "deye"
+                ? "Deye Cloud API"
+                : station?.provider_code === "local"
+                  ? "Локальный мониторинг"
+                  : station?.provider_code || "—"
+              : "Демо-данные",
+          ],
           ["Последнее обновление", station?.updated],
         ];
         $("plant-info").replaceChildren(
@@ -1647,6 +1686,11 @@
       function renderDevices() {
         const devices = station?.devices || [];
         const list = $("device-list");
+        const expanded = new Set(
+          Array.from(list.querySelectorAll("details[open]")).map(
+            (d) => d.dataset.device,
+          ),
+        );
         list.replaceChildren();
         if (!devices.length) {
           list.className = "no-data";
@@ -1666,6 +1710,17 @@
             " · " +
             (d.metrics?.length || 0) +
             " показателей";
+          if (crm && (d.deviceType === "INVERTER" || d.kind === "inverter")) {
+            summary.title = "Открыть полные данные инвертора";
+            summary.onclick = function (event) {
+              event.preventDefault();
+              send("inverter", { id: String(d.id) });
+            };
+            const hint = document.createElement("span");
+            hint.className = "muted";
+            hint.textContent = " · Открыть данные →";
+            summary.append(hint);
+          }
           const dl = document.createElement("dl");
           dl.className = "metrics";
           (d.metrics || []).forEach(function (p) {
@@ -1679,7 +1734,18 @@
             box.append(dt, dd);
             dl.append(box);
           });
-          details.append(summary, dl);
+          details.dataset.device = String(d.id);
+          details.open = expanded.has(String(d.id));
+          details.append(summary);
+          if (crm && d.localId) {
+            const open = document.createElement("button");
+            open.textContent = "Открыть карточку оборудования";
+            open.onclick = function () {
+              send("device", { id: String(d.localId) });
+            };
+            details.append(open);
+          }
+          details.append(dl);
           list.append(details);
         });
       }
@@ -1689,7 +1755,7 @@
         const alerts = station?.alerts;
         if (!alerts) {
           list.className = "no-data";
-          list.textContent = "Оповещения из облака ещё не загружены";
+          list.textContent = "Оповещения ещё не загружены";
           return;
         }
         if (!alerts.length) {
@@ -2129,8 +2195,8 @@
             yAxis: {
               type: "value",
               name: "kWh",
-              min: min,
-              max: max,
+              min: Math.floor(min / 10) * 10,
+              max: Math.ceil(max / 10) * 10,
               splitLine: { lineStyle: { color: css("border") } },
               axisLabel: { color: css("muted"), fontSize: 10 },
             },
@@ -2207,7 +2273,11 @@
         prev.setAttribute(
           "aria-label",
           "Назад: " +
-            (p.mode === "D" ? "предыдущий день" : p.mode === "M" ? "предыдущий месяц" : "предыдущий год"),
+            (p.mode === "D"
+              ? "предыдущий день"
+              : p.mode === "M"
+                ? "предыдущий месяц"
+                : "предыдущий год"),
         );
         prev.onclick = function () {
           changePeriod(context, -1);
@@ -2330,6 +2400,21 @@
           }
         };
       });
+      $("station-client").onclick = function () {
+        send("client");
+      };
+      for (const [name, kind] of [
+        ["pv", "panel"],
+        ["inverter", "inverter"],
+        ["grid", "grid"],
+        ["battery", "battery"],
+        ["house", "load"],
+      ]) {
+        document.querySelector(".node-" + name).onclick = function () {
+          if (crm) send("equipment", { id: kind });
+          else activateTab("devices");
+        };
+      }
       $("flow-source").onchange = renderFlow;
       $("station-select").onchange = function () {
         if (crm) {
@@ -2350,6 +2435,11 @@
         setBusy("flow", true);
         setTimeout(function () {
           renderHeader();
+          if (
+            changed &&
+            ["overview", "devices", "alerts", "info"].includes(data.initialTab)
+          )
+            activateTab(data.initialTab);
           setBusy("flow", false);
           notify("Данные обновлены");
         }, 350);
@@ -2465,7 +2555,7 @@
             station.alerts = previousAlerts;
           }
           $("notice").hidden = true;
-          stations = data.stations;
+          stations = [data.station];
           nowDate = data.today;
           if (data.theme) document.documentElement.dataset.theme = data.theme;
           if (data.palette)
@@ -2486,6 +2576,11 @@
             });
           }
           renderHeader();
+          if (
+            changed &&
+            ["overview", "devices", "alerts", "info"].includes(data.initialTab)
+          )
+            activateTab(data.initialTab);
           setBusy("flow", false);
           if (changed || data.refresh)
             ["solar", "power", "history"].forEach(requestData);
@@ -2506,6 +2601,8 @@
             $("notice").classList.add("error");
             $("notice").hidden = false;
           }
+        } else if (data.type === "openDevices") {
+          activateTab("devices", true);
         } else if (data.type === "reload") {
           ["solar", "power", "history"].forEach(requestData);
         } else if (data.type === "error") {
@@ -2527,7 +2624,9 @@
         $("notice").hidden = false;
       }
       if (crm) {
+        $("station-select").hidden = true;
         $("theme").hidden = true;
+        $("download-html").hidden = true;
         setBusy("flow", true);
         $("download-html").textContent = "Открыть отдельно";
         send("ready");

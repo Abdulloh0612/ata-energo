@@ -1,0 +1,693 @@
+.inverter-dashboard {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  --inverter-series-1: var(--accent);
+  --inverter-series-2: var(--success);
+  --inverter-series-3: var(--warning);
+  --inverter-series-4: #6495ed;
+  --inverter-series-5: var(--danger);
+  --inverter-series-6: #a78bfa;
+}
+.inverter-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.inverter-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.inverter-heading h1 {
+  font-size: clamp(1.35rem, 2.3vw, 2rem);
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+  margin: 0 0 12px;
+}
+.inverter-heading h1 span {
+  font-family: var(--mono);
+  font-size: 0.8em;
+  font-weight: 500;
+}
+.inverter-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.inverter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+.inverter-tabs > button {
+  padding: 12px 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  background: none;
+}
+.inverter-tabs > button[aria-current] {
+  color: var(--ink-accent);
+  border-bottom-color: var(--ink-accent);
+  font-weight: 650;
+}
+.inverter-tabs > span {
+  margin-left: auto;
+  font-size: 0.72rem;
+  padding-bottom: 7px;
+}
+.inverter-section {
+  padding: 22px;
+  min-width: 0;
+  scroll-margin-top: 95px;
+}
+.inverter-section h2 {
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+.inverter-section h3 {
+  font-size: 0.83rem;
+  margin: 0 0 12px;
+}
+.inverter-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.inverter-card-head h2,
+.inverter-card-head h3 {
+  margin: 0;
+}
+.inverter-card-head > span {
+  font-size: 0.74rem;
+}
+.inverter-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+.inverter-stack {
+  display: grid;
+  gap: 18px;
+  align-content: stretch;
+}
+.inverter-two-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.inverter-fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 22px;
+}
+.inverter-fields > div {
+  min-width: 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 9px;
+}
+.inverter-fields dt {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+.inverter-fields dd {
+  margin: 5px 0 0;
+  font: 500 0.82rem var(--mono);
+  overflow-wrap: anywhere;
+}
+.inverter-no-field {
+  font-size: 0.78rem;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+}
+.inverter-flow {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.6;
+  min-height: 300px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.inverter-flow > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.inverter-route {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 0.45;
+  stroke-dasharray: 2 1.8;
+}
+.inverter-route.active {
+  stroke: var(--accent);
+  animation: inverter-flow-dash 1.4s linear infinite;
+}
+.inverter-route.reverse {
+  animation-direction: reverse;
+}
+.inverter-particle {
+  fill: var(--accent);
+}
+.inverter-fault {
+  fill: var(--danger);
+}
+.inverter-flow svg text {
+  fill: var(--surface);
+  font-weight: 700;
+}
+.inverter-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  white-space: nowrap;
+}
+.inverter-node strong {
+  font-size: 0.7rem;
+  font-weight: 550;
+}
+.inverter-node b {
+  font: 0.78rem var(--mono);
+}
+.inverter-node small {
+  font-size: 0.64rem;
+  color: var(--text-muted);
+}
+.inverter-node-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--ink-accent);
+}
+.inverter-center {
+  left: 50%;
+  top: 49%;
+}
+.inverter-center .inverter-node-icon {
+  width: 62px;
+  height: 62px;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  box-shadow: 0 0 26px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.inverter-node-pv {
+  left: 13%;
+  top: 20%;
+}
+.inverter-node-grid {
+  left: 87%;
+  top: 20%;
+}
+.inverter-node-battery {
+  left: 13%;
+  top: 80%;
+}
+.inverter-node-load {
+  left: 87%;
+  top: 80%;
+}
+.inverter-soc {
+  font: 600 0.65rem var(--mono);
+  color: var(--ink-accent);
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+  border-radius: 5px;
+  padding: 2px 7px;
+  position: absolute;
+  top: -22px;
+}
+.inverter-conversion-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.7fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+.inverter-table-wrap {
+  overflow-x: auto;
+}
+.inverter-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+.inverter-table-wrap th,
+.inverter-table-wrap td {
+  padding: 11px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+.inverter-table-wrap th:first-child,
+.inverter-table-wrap td:first-child {
+  text-align: left;
+}
+.inverter-table-wrap thead {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.inverter-table-wrap tbody th {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.inverter-conversion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  position: relative;
+  color: var(--ink-accent);
+}
+.inverter-chip {
+  border: 1px solid var(--accent);
+  border-radius: 18px;
+  padding: 18px 13px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 7px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 6%, transparent);
+  z-index: 1;
+}
+.inverter-chip strong {
+  font: 0.65rem var(--mono);
+  letter-spacing: 0.18em;
+}
+.inverter-wire {
+  height: 3px;
+  flex: 1;
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0 35%,
+    var(--surface) 40% 45%,
+    var(--accent) 50% 100%
+  );
+  background-size: 60px 100%;
+  animation: none;
+}
+.inverter-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+.inverter-tile {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--surface-2);
+  border-top: 3px solid var(--accent);
+  min-width: 0;
+}
+.inverter-tile small {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+.inverter-tile strong {
+  font: 600 1.1rem var(--mono);
+  overflow-wrap: anywhere;
+}
+.inverter-tile strong span {
+  margin-left: 7px;
+  font: 400 0.69rem var(--font);
+  color: var(--text-muted);
+}
+.inverter-tile.tone-1 {
+  border-top-color: var(--success);
+}
+.inverter-tile.tone-2 {
+  border-top-color: var(--inverter-series-4);
+}
+.inverter-tile.tone-3 {
+  border-top-color: var(--warning);
+}
+.inverter-battery-grid {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+}
+.inverter-battery-visual {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--ink-accent);
+  padding: 20px;
+}
+.inverter-battery-visual > strong {
+  font: 600 1.7rem var(--mono);
+}
+.inverter-battery-visual > span {
+  font-size: 0.73rem;
+}
+.inverter-battery-visual > b {
+  font: 500 0.95rem var(--mono);
+}
+.inverter-battery-shell {
+  border: 2px solid var(--border);
+  border-radius: 9px;
+  width: 106px;
+  height: 42px;
+  padding: 4px;
+  position: relative;
+}
+.inverter-battery-shell:after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 16px;
+  background: var(--border);
+  right: -7px;
+  top: 11px;
+  border-radius: 0 3px 3px 0;
+}
+.inverter-battery-shell > span {
+  height: 100%;
+  display: block;
+  border-radius: 4px;
+  background: var(--accent);
+  transition: width 0.6s ease;
+}
+.inverter-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+.inverter-history-actions > input {
+  max-width: 155px;
+  min-width: 80px;
+}
+.inverter-periods {
+  display: flex;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 3px;
+}
+.inverter-periods button {
+  font-size: 0.7rem;
+  padding: 7px 10px;
+  border-radius: 5px;
+}
+.inverter-periods button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink-accent);
+  box-shadow: var(--shadow);
+}
+.inverter-history-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 18px;
+}
+.inverter-plot-wrap {
+  position: relative;
+  min-width: 0;
+  min-height: 385px;
+}
+.inverter-plot {
+  height: 395px;
+  width: 100%;
+}
+.inverter-plot-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  z-index: 2;
+}
+.inverter-parameters {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  max-height: 440px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.inverter-parameters details summary {
+  font-size: 0.76rem;
+  cursor: pointer;
+  margin: 6px 0;
+}
+.inverter-checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 0.68rem;
+  margin: 8px 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.inverter-checkbox input {
+  margin-top: 3px;
+  min-width: auto;
+  accent-color: var(--accent);
+}
+.inverter-checkbox small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+}
+.inverter-parameters .btn.primary {
+  position: sticky;
+  bottom: 0;
+  flex-shrink: 0;
+}
+.inverter-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.inverter-presets button {
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+}
+.inverter-alerts {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+.inverter-alerts article {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+.inverter-alerts time,
+.inverter-alerts p {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+.inverter-alerts p {
+  grid-column: 2/-1;
+}
+.inverter-spinning {
+  animation: inverter-rotate 1s linear infinite;
+}
+@keyframes inverter-flow-dash {
+  to {
+    stroke-dashoffset: -11.4;
+  }
+}
+@keyframes inverter-wire-run {
+  to {
+    background-position: 60px 0;
+  }
+}
+@keyframes inverter-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 1200px) {
+  .inverter-top-grid {
+    grid-template-columns: 1fr;
+  }
+  .inverter-stack {
+    grid-template-columns: 1fr 1fr;
+  }
+  .inverter-flow {
+    max-width: 650px;
+    min-height: 310px;
+  }
+  .inverter-conversion-grid {
+    grid-template-columns: 1fr 150px 1fr;
+  }
+  .inverter-history-grid {
+    grid-template-columns: minmax(0, 1fr) 240px;
+  }
+}
+@media (max-width: 800px) {
+  .inverter-stack,
+  .inverter-two-grid {
+    grid-template-columns: 1fr;
+  }
+  .inverter-conversion-grid {
+    grid-template-columns: 1fr;
+  }
+  .inverter-conversion {
+    min-height: 130px;
+    max-width: 300px;
+    width: 100%;
+    margin: auto;
+  }
+  .inverter-battery-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .inverter-battery-visual {
+    grid-column: 1/-1;
+  }
+  .inverter-history-grid {
+    grid-template-columns: 1fr;
+  }
+  .inverter-parameters {
+    max-height: 350px;
+  }
+  .inverter-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .inverter-alerts article {
+    grid-template-columns: auto 1fr;
+  }
+  .inverter-alerts time {
+    grid-column: 2;
+  }
+  .inverter-section {
+    padding: 17px;
+  }
+}
+@media (max-width: 480px) {
+  .inverter-heading .row {
+    flex-wrap: wrap;
+  }
+  .inverter-meta {
+    gap: 8px;
+    font-size: 0.7rem;
+  }
+  .inverter-tabs {
+    gap: 16px;
+  }
+  .inverter-tabs > span {
+    margin-left: 0;
+  }
+  .inverter-fields {
+    grid-template-columns: 1fr;
+  }
+  .inverter-battery-grid {
+    grid-template-columns: 1fr;
+  }
+  .inverter-flow {
+    min-height: 0;
+    aspect-ratio: 1.05;
+  }
+  .inverter-node-icon {
+    width: 35px;
+    height: 35px;
+    border-radius: 11px;
+  }
+  .inverter-node-pv,
+  .inverter-node-battery {
+    left: 15%;
+  }
+  .inverter-node-grid,
+  .inverter-node-load {
+    left: 85%;
+  }
+  .inverter-node strong {
+    font-size: 0.6rem;
+  }
+  .inverter-node b {
+    font-size: 0.65rem;
+  }
+  .inverter-node small {
+    font-size: 0.56rem;
+  }
+  .inverter-center .inverter-node-icon {
+    width: 46px;
+    height: 46px;
+  }
+  .inverter-tiles {
+    gap: 8px;
+  }
+  .inverter-tile {
+    padding: 11px;
+  }
+  .inverter-tile strong {
+    font-size: 0.95rem;
+  }
+  .inverter-history-actions {
+    gap: 5px;
+  }
+  .inverter-plot {
+    height: 355px;
+  }
+  .inverter-plot-wrap {
+    min-height: 355px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inverter-route.active,
+  .inverter-wire,
+  .inverter-spinning {
+    animation: none;
+  }
+  .inverter-particle {
+    display: none;
+  }
+  .inverter-battery-shell > span {
+    transition: none;
+  }
+}
+
+.inverter-conversion.active .inverter-wire {
+  animation: inverter-wire-run 1.5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .inverter-conversion.active .inverter-wire {
+    animation: none;
+  }
+}
+
+.inverter-all-points > summary {
+  cursor: pointer;
+  font-weight: 650;
+  font-size: 0.95rem;
+}
+.inverter-all-points[open] > summary {
+  margin-bottom: 18px;
+}

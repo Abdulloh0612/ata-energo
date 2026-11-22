@@ -2,6 +2,7 @@ package deye
 
 import (
 	"context"
+	"sort"
 	"strings"
 )
 
@@ -135,6 +136,41 @@ type DeviceHistoryRawRequest struct {
 func (c *Client) DeviceHistoryRaw(ctx context.Context, req DeviceHistoryRawRequest) (*DeviceHistoryResponse, error) {
 	var out DeviceHistoryResponse
 	return &out, c.post(ctx, "/v1.0/device/historyRaw", req, &out)
+}
+
+// DeviceHistoryRawBatched respects Deye's five-measurement limit and joins
+// batches by timestamp; missing samples remain missing rather than becoming zero.
+func (c *Client) DeviceHistoryRawBatched(ctx context.Context, req DeviceHistoryRawRequest) (*DeviceHistoryResponse, error) {
+	if len(req.MeasurePoints) <= 5 {
+		return c.DeviceHistoryRaw(ctx, req)
+	}
+	var result *DeviceHistoryResponse
+	rows := make(map[FlexString]*DeviceHistoryItem)
+	for offset := 0; offset < len(req.MeasurePoints); offset += 5 {
+		batch := req
+		batch.MeasurePoints = req.MeasurePoints[offset:min(offset+5, len(req.MeasurePoints))]
+		reply, err := c.DeviceHistoryRaw(ctx, batch)
+		if err != nil {
+			return nil, err
+		}
+		if result == nil {
+			result = reply
+		}
+		for _, item := range reply.DataList {
+			row := rows[item.Time]
+			if row == nil {
+				row = &DeviceHistoryItem{Time: item.Time}
+				rows[item.Time] = row
+			}
+			row.ItemList = append(row.ItemList, item.ItemList...)
+		}
+	}
+	result.DataList = make([]DeviceHistoryItem, 0, len(rows))
+	for _, row := range rows {
+		result.DataList = append(result.DataList, *row)
+	}
+	sort.Slice(result.DataList, func(i, j int) bool { return result.DataList[i].Time < result.DataList[j].Time })
+	return result, nil
 }
 
 // DeviceAlertListRequest — unix-секунды, диапазон не больше 30 дней.

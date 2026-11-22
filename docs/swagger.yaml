@@ -45,6 +45,17 @@ definitions:
       warranty_until:
         type: string
     type: object
+  api.inverterHistoryInput:
+    properties:
+      date:
+        type: string
+      measurePoints:
+        items:
+          type: string
+        type: array
+      mode:
+        type: string
+    type: object
   api.loginRequest:
     properties:
       password:
@@ -2412,6 +2423,82 @@ paths:
       security:
       - BearerAuth: []
       summary: Привязать объект к клиенту
+      tags:
+      - CRM · Объекты
+  /crm/sites/{id}/devices/{device}:
+    get:
+      parameters:
+      - description: ID объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID устройства Deye из списка станции
+        in: path
+        name: device
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Полные показатели инвертора станции
+      tags:
+      - CRM · Объекты
+  /crm/sites/{id}/devices/{device}/alerts:
+    get:
+      parameters:
+      - description: ID объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID устройства Deye
+        in: path
+        name: device
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.DeviceAlertListResponse'
+      security:
+      - BearerAuth: []
+      summary: Аварии инвертора за последние 30 дней
+      tags:
+      - CRM · Объекты
+  /crm/sites/{id}/devices/{device}/history:
+    post:
+      parameters:
+      - description: ID объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID устройства Deye
+        in: path
+        name: device
+        required: true
+        type: integer
+      - description: Период и ключи измерений
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.inverterHistoryInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.DeviceHistoryResponse'
+      security:
+      - BearerAuth: []
+      summary: История выбранных параметров инвертора
       tags:
       - CRM · Объекты
   /crm/sites/{id}/history:

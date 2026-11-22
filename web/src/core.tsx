@@ -136,6 +136,9 @@ export function useList<T>(
     queryFn: ({ signal }) => api<T>(path, { signal }),
     enabled,
     refetchInterval,
+    ...(refetchInterval
+      ? { staleTime: refetchInterval, refetchOnWindowFocus: false }
+      : {}),
   });
 }
 export const Session = createContext<{ me: Me; access: Access } | null>(null);

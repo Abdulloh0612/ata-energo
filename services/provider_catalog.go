@@ -155,7 +155,7 @@ func (c *ProviderCatalog) persist(ctx context.Context, provider string, accountI
 }
 
 func (c *ProviderCatalog) Run(ctx context.Context) {
-	ticker := time.NewTicker(15 * time.Minute)
+	ticker := time.NewTicker(3 * time.Minute)
 	defer ticker.Stop()
 	for {
 		c.poll(ctx)

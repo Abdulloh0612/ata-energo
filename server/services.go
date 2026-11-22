@@ -84,7 +84,7 @@ func NewServices(e Essentials) (Services, error) {
 		registry.Register(deyeSvc)
 	}
 	collector := services.NewVendorCollector(registry, modemRepo, telemetrySvc, e.Logger,
-		EnvSeconds(e.Vars[DeyePollIntervalVar], 60))
+		EnvSeconds(e.Vars[DeyePollIntervalVar], 180))
 
 	background := services.NewBackgroundService(telemetrySvc, modemRepo, e.Logger,
 		EnvBool(e.Vars[DemoModeVar]), EnvSeconds(e.Vars[DemoIntervalVar], 2))

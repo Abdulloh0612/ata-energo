@@ -98,6 +98,9 @@ func RegisterProviders(router fiber.Router, pool *pgxpool.Pool, catalog *service
 	router.Get("/sites/:id/alerts", middleware.StaffOnly(), func(c *fiber.Ctx) error {
 		return siteCloudAlerts(c, pool, deyeService)
 	})
+	router.Get("/sites/:id/devices/:device", middleware.StaffOnly(), func(c *fiber.Ctx) error { return siteInverterData(c, pool, deyeService) })
+	router.Post("/sites/:id/devices/:device/history", middleware.StaffOnly(), func(c *fiber.Ctx) error { return siteInverterHistory(c, pool, deyeService) })
+	router.Get("/sites/:id/devices/:device/alerts", middleware.StaffOnly(), func(c *fiber.Ctx) error { return siteInverterAlerts(c, pool, deyeService) })
 	// @Summary Привязать объект к клиенту
 	// @Tags CRM · Объекты
 	// @Security BearerAuth

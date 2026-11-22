@@ -187,3 +187,38 @@ func TestFlexTypes(t *testing.T) {
 		t.Fatal(NormKey("Grid Voltage L1-L2"))
 	}
 }
+
+func TestDeviceHistoryRawBatchedJoinsSparseTimestamps(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1.0/account/token" {
+			_, _ = w.Write([]byte(`{"code":"1000000","success":true,"accessToken":"tok","expiresIn":3600}`))
+			return
+		}
+		var req DeviceHistoryRawRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Error(err)
+		}
+		if len(req.MeasurePoints) > 5 || req.DeviceSn != "SN1" || req.StartTimestamp != 100 {
+			t.Errorf("invalid batch: %+v", req)
+		}
+		calls++
+		if calls == 1 {
+			_, _ = w.Write([]byte(`{"code":"1000000","success":true,"deviceSn":"SN1","dataList":[{"time":"200","itemList":[{"key":"PV","value":"0"}]},{"time":"100","itemList":[{"key":"PV","value":"12"}]}]}`))
+		} else {
+			_, _ = w.Write([]byte(`{"code":"1000000","success":true,"dataList":[{"time":"200","itemList":[{"key":"SOC","value":"97"}]},{"time":"300","itemList":[{"key":"SOC","value":"98"}]}]}`))
+		}
+	}))
+	defer srv.Close()
+	got, err := newTestClient(srv.URL).DeviceHistoryRawBatched(context.Background(), DeviceHistoryRawRequest{DeviceSn: "SN1", StartTimestamp: 100, EndTimestamp: 300, MeasurePoints: []string{"PV", "V", "A", "Grid", "Load", "SOC"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 || got.DeviceSn != "SN1" || len(got.DataList) != 3 {
+		t.Fatalf("unexpected result: calls=%d reply=%+v", calls, got)
+	}
+	if got.DataList[0].Time != "100" || len(got.DataList[0].ItemList) != 1 || got.DataList[1].Time != "200" || len(got.DataList[1].ItemList) != 2 || got.DataList[2].Time != "300" || len(got.DataList[2].ItemList) != 1 {
+		t.Fatalf("timestamps not correctly joined: %+v", got.DataList)
+	}
+}

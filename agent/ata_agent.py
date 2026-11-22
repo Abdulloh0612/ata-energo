@@ -36,6 +36,7 @@ from scan_wifi import local_ip, probe_device, scan_network, solarman_broadcast, 
 VERSION = "1.0"
 CONFIG_FILE = HERE / "agent_config.json"
 POLL_SECONDS = 3
+TELEMETRY_POLL_SECONDS = 180
 
 
 class Api:
@@ -218,7 +219,7 @@ class Agent:
             now = time.time()
             for device in data.get("devices", []):
                 serial = device["serial"]
-                interval = int(device["connection"].get("poll_interval", 10))
+                interval = TELEMETRY_POLL_SECONDS
                 with self.lock:
                     if serial in self.busy or now < self.next_poll.get(serial, 0):
                         continue
