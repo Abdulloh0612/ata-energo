@@ -434,7 +434,7 @@ function RoleMatrix({ roles }: { roles: Role[] }) {
         )}
       </div>
       <div className="scroll-table">
-        <table>
+        <table className="rights-table">
           <thead>
             <tr>
               <th>Операция</th>
@@ -573,7 +573,7 @@ export function Admin() {
           <Failure retry={list.refetch} />
         ) : (
           <div className="scroll-table">
-            <table>
+            <table className="stack-table">
               <thead>
                 <tr>
                   <th>Сотрудник</th>
@@ -586,13 +586,15 @@ export function Admin() {
               <tbody>
                 {(list.data ?? []).map((u) => (
                   <tr key={u.id}>
-                    <td>
+                    <td data-label="Сотрудник">
                       {[u.first_name, u.last_name].filter(Boolean).join(" ") ||
                         u.username}
                     </td>
-                    <td>{u.username}</td>
-                    <td>{u.role_display}</td>
-                    <td>{u.is_active ? "Активен" : "Отключён"}</td>
+                    <td data-label="Логин">{u.username}</td>
+                    <td data-label="Роль">{u.role_display}</td>
+                    <td data-label="Доступ">
+                      {u.is_active ? "Активен" : "Отключён"}
+                    </td>
                     {admin && (
                       <td>
                         <button

@@ -19,7 +19,8 @@ import {
 import {
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useDraggable,
   useDroppable,
   useSensor,
@@ -349,16 +350,22 @@ function WorkColumn({
   status,
   children,
   count,
+  active,
 }: {
   status: Status;
   count: number;
+  active: boolean;
   children: ReactNode;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: status });
   return (
     <section
       ref={setNodeRef}
-      className={"work-column" + (isOver ? " work-column-target" : "")}
+      className={
+        "work-column" +
+        (isOver ? " work-column-target" : "") +
+        (active ? " is-active" : "")
+      }
     >
       <header>
         <StatusBadge status={status} />
@@ -382,9 +389,13 @@ function Board({
   move: (item: WorkItem, status: Status) => void;
 }) {
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 220, tolerance: 6 },
+    }),
     useSensor(KeyboardSensor),
   );
+  const [tab, setTab] = useState<Status>(statusCodes[0]);
   function dropped({ active, over }: DragEndEvent) {
     const status = over?.id as Status;
     const item = rows.find((row) => row.id === active.id);
@@ -402,11 +413,31 @@ function Board({
         },
       }}
     >
+      <div className="work-tabs" role="tablist" aria-label="Статусы">
+        {statusCodes.map((status) => (
+          <button
+            key={status}
+            type="button"
+            role="tab"
+            aria-selected={tab === status}
+            className={tab === status ? "is-active" : ""}
+            onClick={() => setTab(status)}
+          >
+            {statuses[status]}
+            <span>{rows.filter((item) => item.status === status).length}</span>
+          </button>
+        ))}
+      </div>
       <div className="work-board">
         {statusCodes.map((status) => {
           const items = rows.filter((item) => item.status === status);
           return (
-            <WorkColumn key={status} status={status} count={items.length}>
+            <WorkColumn
+              key={status}
+              status={status}
+              count={items.length}
+              active={tab === status}
+            >
               {items.map((item) => (
                 <WorkCard key={item.id} {...{ item, directory, open, drag }} />
               ))}
@@ -511,7 +542,10 @@ function WorkTable({ rows, directory, open }: ViewProps) {
           {table.getRowModel().rows.map((row) => (
             <tr key={row.original.id}>
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id}>
+                <td
+                  key={cell.id}
+                  data-label={String(cell.column.columnDef.header)}
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}

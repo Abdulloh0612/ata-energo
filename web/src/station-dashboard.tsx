@@ -491,7 +491,7 @@ export function StationDashboard({ site }: { site: Station }) {
     <iframe
       ref={frame}
       src="/station-dashboard.html?source=crm"
-      title={"Monitoring · " + site.name}
+      title={"Мониторинг станции · " + site.name}
       onLoad={() => setReady(true)}
       style={{
         width: "100%",

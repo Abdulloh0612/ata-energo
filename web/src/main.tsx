@@ -63,6 +63,7 @@ import {
 } from "./ui";
 import { Login } from "./login";
 import "./styles.css";
+import "./mobile.css";
 const Dashboard = lazy(() =>
   import("./dashboard").then((m) => ({ default: m.Dashboard })),
 );
@@ -332,6 +333,10 @@ function Shell() {
   }, [access, customer, navigate]);
   const page =
     nav.find((n) => n.to !== "/" && loc.pathname.startsWith(n.to)) ?? nav[0];
+  useEffect(() => {
+    document.title =
+      (customer ? "Личный кабинет" : page.label) + " · Ата Энерго";
+  }, [customer, page.label]);
   const navItems = links.map((n) => (
     <NavLink key={n.key} to={n.to} end={n.to === "/"} title={n.label}>
       <n.icon size={19} />
@@ -346,6 +351,9 @@ function Shell() {
         (customer ? "customer" : "")
       }
     >
+      <a className="skip-link" href="#main-content">
+        К содержимому
+      </a>
       {!customer && (
         <aside className="sidebar">
           <Link to="/" aria-label="Ата Энерго, обзор">
@@ -522,6 +530,13 @@ function Root() {
     theme = usePrefs((s) => s.theme);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    const color = getComputedStyle(document.documentElement)
+      .getPropertyValue("--bg")
+      .trim();
+    if (color)
+      document
+        .querySelector('meta[name="theme-color"]')
+        ?.setAttribute("content", color);
   }, [theme]);
   const me = useList<Me>("/me", token),
     access = useList<Access>("/crm/access", token && !!me.data);

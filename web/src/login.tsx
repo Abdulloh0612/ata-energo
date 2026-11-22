@@ -3,7 +3,6 @@ import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, LockKeyhole, Sun, Activity } from "lucide-react";
 import { Brand } from "./ui";
 import { login } from "./core";
-import field from "./assets/solar-field.jpg";
 export function Login() {
   const [show, setShow] = useState(false),
     [error, setError] = useState(""),
@@ -16,11 +15,11 @@ export function Login() {
     setError("");
     try {
       await login(String(f.get("username")).trim(), String(f.get("password")));
-    } catch (e) {
+    } catch (err) {
       setError(
-        e instanceof TypeError
+        err instanceof TypeError
           ? "Нет связи с сервером. Проверьте подключение."
-          : (e as Error).message,
+          : (err as Error).message,
       );
     } finally {
       setBusy(false);
@@ -28,10 +27,7 @@ export function Login() {
   }
   return (
     <main className="entry">
-      <section
-        className="entry-photo"
-        style={{ backgroundImage: "url(" + field + ")" }}
-      >
+      <section className="entry-photo">
         <Brand />
         <div className="entry-caption">
           <span className="photo-label">

@@ -458,7 +458,10 @@ function Table<T extends Entity>({
           {table.getRowModel().rows.map((row) => (
             <tr key={row.id}>
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id}>
+                <td
+                  key={cell.id}
+                  data-label={String(cell.column.columnDef.header)}
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
@@ -506,7 +509,13 @@ function Filters({
   exportCSV: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const [saved, setSaved] = useState(() => localStorage.getItem(saveKey));
+  const [saved, setSaved] = useState(() => {
+    try {
+      return localStorage.getItem(saveKey);
+    } catch {
+      return null;
+    }
+  });
   const [notice, setNotice] = useState("");
   function set(key: string, value: string) {
     const next = new URLSearchParams(query);
@@ -516,9 +525,13 @@ function Filters({
     setNotice("");
   }
   function save() {
-    localStorage.setItem(saveKey, query.toString());
-    setSaved(query.toString());
-    setNotice("Фильтр сохранён");
+    try {
+      localStorage.setItem(saveKey, query.toString());
+      setSaved(query.toString());
+      setNotice("Фильтр сохранён");
+    } catch {
+      setNotice("Браузер не разрешил сохранить фильтр");
+    }
   }
   return (
     <div className="inv-filters">

@@ -160,7 +160,8 @@ export function Portal() {
             <strong>
               {online.length
                 ? fmtNumber(
-                    online.reduce((s, d) => s + d.last_data.power, 0) / 1000,
+                    online.reduce((s, d) => s + Number(d.last_data.power), 0) /
+                      1000,
                   )
                 : "—"}{" "}
               <small>кВт</small>

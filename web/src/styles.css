@@ -8,15 +8,19 @@
   --surface-2: #f4efe6;
   --border: #e8e0d2;
   --text: #1f1a12;
-  --text-muted: #7a6f5d;
+  --text-muted: #675c4b;
   --accent: #f59e0b;
   --accent-contrast: #1f1a12;
   --success: #16a34a;
   --warning: #ea8a0c;
   --danger: #dc2626;
-  --nodata: #a8a29e;
+  --nodata: #736d68;
   --shadow: 0 4px 24px rgba(120, 90, 30, 0.08);
   --radius: 14px;
+  --r-sm: 8px;
+  --r-md: 11px;
+  --r-lg: 14px;
+  --tap: 44px;
 }
 
 [data-theme="night"] {
@@ -31,7 +35,7 @@
   --success: #34d399;
   --warning: #fbbf24;
   --danger: #f87171;
-  --nodata: #64748b;
+  --nodata: #8393ab;
   --shadow: 0 6px 30px rgba(0, 0, 0, 0.45);
 }
 
@@ -48,7 +52,7 @@
   --success: #4ade80;
   --warning: #fbbf24;
   --danger: #fb7185;
-  --nodata: #6d6394;
+  --nodata: #9a90c2;
   --shadow: 0 6px 30px rgba(20, 8, 60, 0.5);
 }
 
@@ -58,13 +62,13 @@
   --surface-2: #e6f0e8;
   --border: #d3e3d7;
   --text: #14281b;
-  --text-muted: #5b7564;
+  --text-muted: #4a6354;
   --accent: #10b981;
   --accent-contrast: #ffffff;
   --success: #059669;
   --warning: #d97706;
   --danger: #dc2626;
-  --nodata: #94a3a0;
+  --nodata: #667773;
   --shadow: 0 4px 24px rgba(16, 90, 60, 0.08);
 }
 
@@ -154,7 +158,7 @@ h1 {
   font-size: clamp(1.8rem, 3vw, 2.6rem);
   line-height: 1.13;
   font-weight: 650;
-  letter-spacing: -0.065em;
+  letter-spacing: -0.03em;
 }
 h2 {
   font-size: 1.17rem;
@@ -321,6 +325,7 @@ button,
 .workspace {
   --sidebar: 228px;
   min-height: 100vh;
+  min-height: 100dvh;
   padding-left: var(--sidebar);
 }
 .workspace.compact {
@@ -911,6 +916,7 @@ pre {
   background: var(--surface);
 }
 .entry-photo {
+  background-image: url("./assets/solar-field.webp");
   position: relative;
   isolation: isolate;
   background-position: 54% center;
