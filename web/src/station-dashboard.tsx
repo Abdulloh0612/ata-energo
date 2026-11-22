@@ -1,0 +1,505 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { api, useList, usePrefs } from "./core";
+
+type Station = {
+  id: string;
+  name: string;
+  status: string;
+  timezone: string;
+  address: string;
+  provider_code: string;
+  archived: boolean;
+};
+type Reading = {
+  deviceSn: string;
+  deviceType: string;
+  deviceState: number;
+  dataList: { key: string; value: string; unit: string }[];
+};
+type CloudSnapshot = {
+  station: { installedCapacity: number | null } | null;
+  latest: {
+    chargePower: number | null;
+    dischargePower: number | null;
+    batteryPower: number | null;
+    batterySOC: number | null;
+    lastUpdateTime: string | null;
+  } | null;
+  flow: Record<string, unknown>;
+  inverter_flow: Record<string, unknown> | null;
+  devices: {
+    deviceId: number;
+    deviceSn: string;
+    deviceType: string;
+    connectStatus: number;
+  }[];
+  readings: Reading[];
+  warnings: string[];
+};
+type EnergyPoint = {
+  timeStamp: string;
+  year: number | null;
+  month: number | null;
+  day: number | null;
+  generationPower: number | null;
+  consumptionPower: number | null;
+  purchasePower: number | null;
+  wirePower: number | null;
+  gridPower: number | null;
+  batteryPower: number | null;
+  batterySOC: number | null;
+  generationValue: number | null;
+  consumptionValue: number | null;
+  purchaseValue: number | null;
+  gridValue: number | null;
+  chargeValue: number | null;
+  dischargeValue: number | null;
+};
+type History = { stationDataItems: EnergyPoint[] };
+type Period = { mode: "D" | "M" | "Y" | "T"; date: string };
+type BridgeRequest = {
+  channel: string;
+  type: string;
+  id?: string;
+  context?: "solar" | "history" | "power";
+  period?: Period;
+  requestId?: number;
+  height?: number;
+  tab?: string;
+};
+function dateInZone(date: Date, timezone: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+function cloudDate(value: string | null | undefined) {
+  if (!value) return null;
+  const numeric = Number(value);
+  const date = new Date(Number.isFinite(numeric) ? numeric * 1000 : value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+function flowValues(
+  raw: Record<string, unknown> | null | undefined,
+  soc: number | null | undefined,
+) {
+  function power(key: string) {
+    const value = raw?.[key];
+    const parts = Array.isArray(value) ? value : [value];
+    const powers = parts.map(
+      (part) => (part as { power?: number } | undefined)?.power,
+    );
+    return powers.length && powers.every((p) => typeof p === "number")
+      ? powers.reduce((total, p) => total! + p!, 0)
+      : null;
+  }
+  return {
+    pv: power("pv"),
+    grid: power("grid"),
+    battery: power("battery"),
+    load: power("load"),
+    soc,
+    offGrid:
+      typeof (raw?.grid as { voltage?: number } | undefined)?.voltage ===
+      "number"
+        ? (raw!.grid as { voltage: number }).voltage < 50
+        : null,
+  };
+}
+function sum(points: EnergyPoint[], key: keyof EnergyPoint) {
+  const values = points
+    .map((p) => p[key])
+    .filter((v): v is number => typeof v === "number");
+  return values.length ? values.reduce((a, b) => a + b, 0) : null;
+}
+function balance(points: EnergyPoint[]) {
+  if (!points.length) return null;
+  const consumption = sum(points, "consumptionValue");
+  const purchased = sum(points, "purchaseValue");
+  const discharge = sum(points, "dischargeValue");
+  return {
+    production: sum(points, "generationValue"),
+    consumption,
+    purchased,
+    discharge,
+    charge: sum(points, "chargeValue"),
+    feedIn: sum(points, "gridValue"),
+    pvUsed:
+      consumption !== null && purchased !== null && discharge !== null
+        ? Math.max(0, consumption - purchased - discharge)
+        : null,
+  };
+}
+function powerRows(points: EnergyPoint[], timezone: string) {
+  return points
+    .flatMap((p) => {
+      const date = cloudDate(p.timeStamp);
+      if (!date) return [];
+      const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: timezone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(date);
+      const minute =
+        Number(parts.find((v) => v.type === "hour")?.value) * 60 +
+        Number(parts.find((v) => v.type === "minute")?.value);
+      const kw = (value: number | null) =>
+        typeof value === "number" ? value / 1000 : null;
+      return [
+        {
+          minute,
+          production: kw(p.generationPower),
+          pv: null,
+          generator: null,
+          gridInverter: null,
+          grid: kw(p.gridPower ?? p.purchasePower),
+          battery: kw(p.batteryPower),
+          consumption: kw(p.consumptionPower),
+          soc: p.batterySOC,
+        },
+      ];
+    })
+    .sort((a, b) => a.minute - b.minute);
+}
+function historyRows(points: EnergyPoint[], period: Period) {
+  const known = new Map(
+    points.map((p) => {
+      const date = [
+        p.year,
+        p.month && String(p.month).padStart(2, "0"),
+        p.day && String(p.day).padStart(2, "0"),
+      ]
+        .filter(Boolean)
+        .join("-");
+      return [date, p];
+    }),
+  );
+  let dates: string[];
+  if (period.mode === "M") {
+    const count = new Date(
+      Number(period.date.slice(0, 4)),
+      Number(period.date.slice(5, 7)),
+      0,
+    ).getDate();
+    dates = Array.from(
+      { length: count },
+      (_, i) => period.date + "-" + String(i + 1).padStart(2, "0"),
+    );
+  } else if (period.mode === "Y") {
+    dates = Array.from(
+      { length: 12 },
+      (_, i) => period.date + "-" + String(i + 1).padStart(2, "0"),
+    );
+  } else dates = Array.from(known.keys()).sort();
+  return dates.map((date) => {
+    const point = known.get(date);
+    const negative = (v: number | null | undefined) =>
+      typeof v === "number" ? -Math.abs(v) : null;
+    return {
+      date,
+      label:
+        period.mode === "M"
+          ? String(Number(date.slice(-2)))
+          : period.mode === "Y"
+            ? new Date(date + "-01T12:00:00Z").toLocaleString("en-US", {
+                month: "short",
+                timeZone: "UTC",
+              })
+            : date,
+      production: point?.generationValue,
+      discharge: point?.dischargeValue,
+      purchased: point?.purchaseValue,
+      consumption: negative(point?.consumptionValue),
+      charge: negative(point?.chargeValue),
+      feedIn: negative(point?.gridValue),
+    };
+  });
+}
+export function StationDashboard({ site }: { site: Station }) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(1100);
+  const [ready, setReady] = useState(false);
+  const navigate = useNavigate();
+  const cache = useQueryClient();
+  const theme = usePrefs((p) => p.theme);
+  const stations = useList<Station[]>("/crm/sites");
+  const path = "/crm/sites/" + encodeURIComponent(site.id);
+  const snapshot = useList<CloudSnapshot>(path + "/telemetry", true, 60000);
+  const post = useCallback((data: Record<string, unknown>) => {
+    frame.current?.contentWindow?.postMessage(
+      { channel: "ata-station", ...data },
+      window.location.origin,
+    );
+  }, []);
+  const getHistory = useCallback(
+    (period: Period) => {
+      const query = new URLSearchParams({
+        mode: period.mode,
+        date: period.date,
+      });
+      const url = path + "/history?" + query;
+      return cache.fetchQuery({
+        queryKey: [url],
+        queryFn: ({ signal }) => api<History>(url, { signal }),
+        staleTime: 60000,
+      });
+    },
+    [cache, path],
+  );
+  useEffect(() => {
+    if (!ready || !snapshot.data) return;
+    const data = snapshot.data;
+    const date = cloudDate(data.latest?.lastUpdateTime);
+    const palette = Object.fromEntries(
+      Object.entries({
+        bg: "--bg",
+        card: "--surface",
+        soft: "--surface-2",
+        ink: "--text",
+        muted: "--text-muted",
+        border: "--border",
+        accent: "--accent",
+        green: "--success",
+        danger: "--danger",
+      }).map(([key, token]) => [
+        key,
+        getComputedStyle(document.documentElement)
+          .getPropertyValue(token)
+          .trim(),
+      ]),
+    );
+    const stationFlow = flowValues(data.flow, data.latest?.batterySOC);
+    const latest = data.latest;
+    if (
+      latest &&
+      (typeof latest.chargePower === "number" ||
+        typeof latest.dischargePower === "number")
+    ) {
+      stationFlow.battery =
+        Math.abs(latest.chargePower ?? 0) -
+        Math.abs(latest.dischargePower ?? 0);
+    } else if (typeof latest?.batteryPower === "number")
+      stationFlow.battery = -latest.batteryPower;
+    post({
+      type: "init",
+      refresh: true,
+      palette,
+      theme: theme === "solar" ? "light" : "dark",
+      today: dateInZone(new Date(), site.timezone),
+      station: {
+        ...site,
+        capacity: data.station?.installedCapacity,
+        online: site.status === "normal" || site.status === "warning",
+        onlineInverters: data.devices.filter(
+          (d) => d.deviceType === "INVERTER" && d.connectStatus !== 0,
+        ).length,
+        updated: date
+          ? date.toLocaleString("sv-SE", { timeZone: site.timezone }) +
+            " (" +
+            site.timezone +
+            ")"
+          : null,
+        flow: stationFlow,
+        inverterFlow: data.inverter_flow
+          ? flowValues(data.inverter_flow, data.latest?.batterySOC)
+          : null,
+        summary: {},
+        alerts: null,
+        devices: data.devices.map((d) => ({
+          id: d.deviceId,
+          ...d,
+          online: d.connectStatus !== 0,
+          metrics:
+            data.readings.find(
+              (r) => r.deviceSn === d.deviceSn && r.deviceType === d.deviceType,
+            )?.dataList || [],
+        })),
+      },
+      stations: stations.data?.filter(
+        (s) =>
+          s.provider_code === "deye" && !s.archived && s.id.startsWith("s"),
+      ) || [site],
+    });
+    if (data.warnings.length)
+      post({ type: "error", message: data.warnings.join(". ") });
+  }, [ready, snapshot.data, stations.data, site, theme, post]);
+  useEffect(() => {
+    if (ready && snapshot.error)
+      post({ type: "error", message: snapshot.error.message });
+  }, [ready, snapshot.error, post]);
+  useEffect(() => {
+    let active = true;
+    async function summary() {
+      try {
+        const total = await getHistory({ mode: "T", date: "" });
+        const today = dateInZone(new Date(), site.timezone);
+        const month = await getHistory({ mode: "M", date: today.slice(0, 7) });
+        const daily = month.stationDataItems.find(
+          (p) => p.day === Number(today.slice(-2)),
+        );
+        if (active)
+          post({
+            type: "summary",
+            value: {
+              production: sum(total.stationDataItems, "generationValue"),
+              consumption: sum(total.stationDataItems, "consumptionValue"),
+              daily: daily?.generationValue ?? null,
+              weather: null,
+            },
+          });
+      } catch (err) {
+        if (active)
+          post({
+            type: "error",
+            message:
+              err instanceof Error ? err.message : "Summary could not load",
+          });
+      }
+    }
+    if (ready && snapshot.data) void summary();
+    return () => {
+      active = false;
+    };
+  }, [ready, snapshot.data, site.timezone, getHistory, post]);
+  useEffect(() => {
+    let active = true;
+    async function receive(event: MessageEvent<BridgeRequest>) {
+      if (
+        event.origin !== window.location.origin ||
+        event.source !== frame.current?.contentWindow ||
+        event.data?.channel !== "ata-station"
+      )
+        return;
+      const message = event.data;
+      switch (message.type) {
+        case "ready":
+          setReady(true);
+          break;
+        case "height":
+          if (typeof message.height === "number")
+            setHeight(Math.min(50000, Math.max(500, message.height)));
+          break;
+        case "station":
+          if (
+            stations.data?.some(
+              (s) => s.id === message.id && s.provider_code === "deye",
+            )
+          )
+            navigate("/sites/" + encodeURIComponent(message.id!));
+          break;
+        case "refresh":
+          await cache.invalidateQueries({
+            predicate: (q) =>
+              typeof q.queryKey[0] === "string" &&
+              q.queryKey[0].startsWith(path),
+          });
+
+          break;
+        case "download":
+          window.open("/station-dashboard.html", "_blank", "noopener");
+          break;
+        case "tab":
+          if (message.tab === "alerts") {
+            try {
+              const reply = await api<{
+                stationAlertItems: {
+                  alertName: string;
+                  alertStartTime: number;
+                }[];
+              }>(path + "/alerts");
+              if (active)
+                post({
+                  type: "alerts",
+                  value: reply.stationAlertItems.map((a) => ({
+                    time: new Date(a.alertStartTime * 1000).toLocaleString(
+                      "en-GB",
+                      { timeZone: site.timezone },
+                    ),
+                    text: a.alertName,
+                  })),
+                });
+            } catch (err) {
+              if (active)
+                post({
+                  type: "error",
+                  message:
+                    err instanceof Error
+                      ? err.message
+                      : "Alerts could not load",
+                });
+            }
+          }
+          break;
+        case "request":
+          if (!message.context || !message.period) break;
+          try {
+            const result = await getHistory(message.period);
+            const value =
+              message.context === "solar"
+                ? balance(result.stationDataItems)
+                : message.context === "power"
+                  ? powerRows(result.stationDataItems, site.timezone)
+                  : historyRows(result.stationDataItems, message.period);
+            if (active)
+              post({
+                type: "result",
+                stationId: site.id,
+                context: message.context,
+                period: message.period,
+                requestId: message.requestId,
+                value,
+              });
+          } catch (err) {
+            if (active)
+              post({
+                type: "result",
+                stationId: site.id,
+                context: message.context,
+                period: message.period,
+                requestId: message.requestId,
+                value: null,
+                error:
+                  err instanceof Error
+                    ? err.message
+                    : "Cloud data could not load",
+              });
+          }
+          break;
+      }
+    }
+    window.addEventListener("message", receive);
+    return () => {
+      active = false;
+      window.removeEventListener("message", receive);
+    };
+  }, [
+    cache,
+    getHistory,
+    navigate,
+    path,
+    post,
+    site.id,
+    site.timezone,
+    stations.data,
+  ]);
+  return (
+    <iframe
+      ref={frame}
+      src="/station-dashboard.html?source=crm"
+      title={"Monitoring · " + site.name}
+      onLoad={() => setReady(true)}
+      style={{
+        width: "100%",
+        height,
+        border: 0,
+        borderRadius: 14,
+        display: "block",
+      }}
+    />
+  );
+}

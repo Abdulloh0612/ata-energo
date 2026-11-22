@@ -82,6 +82,9 @@ func New() (*Server, error) {
 	registerRoutes(app, s)
 
 	// Vite emits content-hashed assets. Only browser navigation receives the SPA shell.
+	app.Get("/station-dashboard.html", func(c *fiber.Ctx) error {
+		return c.SendFile("web/dist/station-dashboard.html")
+	})
 	app.Static("/assets", "web/dist/assets", fiber.Static{MaxAge: 31536000})
 	app.Get("*", func(c *fiber.Ctx) error {
 		if strings.Contains(c.Path(), ".") || strings.HasPrefix(c.Path(), "/assets/") {
@@ -135,7 +138,7 @@ func registerRoutes(app *fiber.App, s Services) {
 
 	api.Get("/me", jwt, authH.Me)
 	apihandler.RegisterCRM(api.Group("/crm", jwt), s.Pool)
-	apihandler.RegisterProviders(api.Group("/crm", jwt), s.Pool, s.Catalog)
+	apihandler.RegisterProviders(api.Group("/crm", jwt), s.Pool, s.Catalog, s.Deye)
 
 	users := api.Group("/users", jwt, manager)
 	users.Get("", authH.ListUsers)

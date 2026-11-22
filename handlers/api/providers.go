@@ -66,7 +66,7 @@ type providerState struct {
 	Enabled *bool `json:"enabled"`
 }
 
-func RegisterProviders(router fiber.Router, pool *pgxpool.Pool, catalog *services.ProviderCatalog) {
+func RegisterProviders(router fiber.Router, pool *pgxpool.Pool, catalog *services.ProviderCatalog, deyeService *services.DeyeService) {
 	// @Summary Объекты станций
 	// @Tags CRM · Объекты
 	// @Security BearerAuth
@@ -88,6 +88,15 @@ func RegisterProviders(router fiber.Router, pool *pgxpool.Pool, catalog *service
 			(SELECT coalesce(jsonb_agg(jsonb_build_object('id',d.id,'name',d.name,'serial_number',d.serial_number,
 			'status',d.status,'power',d.last_data->'power') ORDER BY d.id),'[]'::jsonb) FROM devices d WHERE d.modem_id=ANY(e.modem_ids)))
 			FROM enriched e WHERE e.id=$1`, c.Params("id"))
+	})
+	router.Get("/sites/:id/telemetry", middleware.StaffOnly(), func(c *fiber.Ctx) error {
+		return siteTelemetry(c, pool, deyeService)
+	})
+	router.Get("/sites/:id/history", middleware.StaffOnly(), func(c *fiber.Ctx) error {
+		return siteCloudHistory(c, pool, deyeService)
+	})
+	router.Get("/sites/:id/alerts", middleware.StaffOnly(), func(c *fiber.Ctx) error {
+		return siteCloudAlerts(c, pool, deyeService)
 	})
 	// @Summary Привязать объект к клиенту
 	// @Tags CRM · Объекты

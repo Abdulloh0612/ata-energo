@@ -1,5 +1,6 @@
 import { validateForm } from "./form";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   RefreshCw,
@@ -182,9 +183,20 @@ export function Integrations() {
                 {p.mock && <span className="badge warn">Демо</span>}
               </div>
               <h2>{p.code === "deye" ? "Deye Cloud" : p.name}</h2>
-              <p className="muted">
-                Объекты · {p.sites_count}　Устройства · {p.devices_count}
-              </p>
+              <div className="row actions">
+                <Link
+                  to={"/sites?provider=" + encodeURIComponent(p.code)}
+                  aria-label={"Объекты «" + p.name + "»: " + p.sites_count}
+                >
+                  Объекты · {p.sites_count}
+                </Link>
+                <Link
+                  to={"/devices?provider=" + encodeURIComponent(p.code)}
+                  aria-label={"Устройства «" + p.name + "»: " + p.devices_count}
+                >
+                  Устройства · {p.devices_count}
+                </Link>
+              </div>
             </section>
           ))
         )}

@@ -1,4 +1,5 @@
 import { LiveValue } from "./ui";
+import { StationDashboard } from "./station-dashboard";
 import { validateForm } from "./form";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
@@ -1587,75 +1588,95 @@ function SiteDetails({ id }: { id: string }) {
   const attached = ((devices.data || []) as Device[]).filter(
     (d) => d.modem !== null && s.modem_ids?.includes(d.modem),
   );
+  const cloud = s.provider_code === "deye" && s.id.startsWith("s");
   return (
     <div className="inv-page">
-      <Subhead
-        title={s.name}
-        section="sites"
-        meta={
-          <>
-            <Badge status={s.status} />
-            <span className="inv-tag">{siteProvider(s)}</span>
-            {s.client_id && (
-              <EntityLink
-                section="clients"
-                id={s.client_id}
-                label={s.client_name || "Клиент"}
-              />
-            )}
-          </>
-        }
-        action={
-          canAssignSite(s) &&
-          clientEditor(me.role) && (
+      {cloud ? (
+        <div className="row between">
+          <Link className="small-link" to="/sites?provider=deye">
+            ← Объекты Deye
+          </Link>
+          {canAssignSite(s) && clientEditor(me.role) && (
             <button className="btn primary" onClick={() => setAssign(true)}>
               Привязать к клиенту
             </button>
-          )
-        }
-      />
-      <div className="inv-columns reverse">
-        <section className="card inv-pad">
-          <h2>Поток энергии</h2>
+          )}
+        </div>
+      ) : (
+        <Subhead
+          title={s.name}
+          section="sites"
+          meta={
+            <>
+              <Badge status={s.status} />
+              <span className="inv-tag">{siteProvider(s)}</span>
+              {s.client_id && (
+                <EntityLink
+                  section="clients"
+                  id={s.client_id}
+                  label={s.client_name || "Клиент"}
+                />
+              )}
+            </>
+          }
+          action={
+            canAssignSite(s) &&
+            clientEditor(me.role) && (
+              <button className="btn primary" onClick={() => setAssign(true)}>
+                Привязать к клиенту
+              </button>
+            )
+          }
+        />
+      )}
+      {cloud ? (
+        <StationDashboard site={s} />
+      ) : (
+        <div className="inv-columns reverse">
+          <section className="card inv-pad">
+            <h2>Поток энергии</h2>
+            <Wait query={devices} />
+            {devices.data && (
+              <PowerFlow
+                devices={attached}
+                onOpen={(deviceID) => navigate("/devices/" + deviceID)}
+              />
+            )}
+          </section>
+          <aside className="card inv-side">
+            <h2>Паспорт объекта</h2>
+            <dl className="inv-dl">
+              <dt>Адрес</dt>
+              <dd>{s.address || "Не указан"}</dd>
+              <dt>Часовой пояс</dt>
+              <dd>{s.timezone}</dd>
+              <dt>Идентификатор у провайдера</dt>
+              <dd className="inv-mono">{s.external_id}</dd>
+              <dt>Обновлено</dt>
+              <dd>
+                <Age value={s.last_synced_at} zone={s.timezone} />
+              </dd>
+            </dl>
+          </aside>
+        </div>
+      )}
+      {!cloud && (
+        <section className="card inv-card">
+          <div className="inv-section-title">
+            <h2>Оборудование объекта</h2>
+            <span>{attached.length}</span>
+          </div>
           <Wait query={devices} />
           {devices.data && (
-            <PowerFlow
-              devices={attached}
-              onOpen={(deviceID) => navigate("/devices/" + deviceID)}
+            <Table
+              columns={deviceColumns([s]).filter(
+                (c) => !["Объект", "Клиент"].includes(c.name),
+              )}
+              rows={attached}
             />
           )}
         </section>
-        <aside className="card inv-side">
-          <h2>Паспорт объекта</h2>
-          <dl className="inv-dl">
-            <dt>Адрес</dt>
-            <dd>{s.address || "Не указан"}</dd>
-            <dt>Часовой пояс</dt>
-            <dd>{s.timezone}</dd>
-            <dt>Идентификатор у провайдера</dt>
-            <dd className="inv-mono">{s.external_id}</dd>
-            <dt>Обновлено</dt>
-            <dd>
-              <Age value={s.last_synced_at} zone={s.timezone} />
-            </dd>
-          </dl>
-        </aside>
-      </div>
-      <section className="card inv-card">
-        <div className="inv-section-title">
-          <h2>Оборудование объекта</h2>
-          <span>{attached.length}</span>
-        </div>
-        <Wait query={devices} />
-        {devices.data && (
-          <Table
-            columns={deviceColumns([s]).filter(
-              (c) => !["Объект", "Клиент"].includes(c.name),
-            )}
-            rows={attached}
-          />
-        )}
-      </section>
+      )}
       {assign && <Assignment site={s} onClose={() => setAssign(false)} />}
     </div>
   );

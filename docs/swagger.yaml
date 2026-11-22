@@ -2371,6 +2371,24 @@ paths:
       summary: Карточка объекта и его устройства
       tags:
       - CRM · Объекты
+  /crm/sites/{id}/alerts:
+    get:
+      parameters:
+      - description: ID объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.StationAlertListResponse'
+      security:
+      - BearerAuth: []
+      summary: Аварии облачной станции за последние 30 дней
+      tags:
+      - CRM · Объекты
   /crm/sites/{id}/client:
     put:
       parameters:
@@ -2394,6 +2412,57 @@ paths:
       security:
       - BearerAuth: []
       summary: Привязать объект к клиенту
+      tags:
+      - CRM · Объекты
+  /crm/sites/{id}/history:
+    get:
+      parameters:
+      - description: ID объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: D — сутки, M — месяц, Y — год, T — всё время
+        enum:
+        - D
+        - M
+        - "Y"
+        - T
+        in: query
+        name: mode
+        required: true
+        type: string
+      - description: YYYY-MM-DD, YYYY-MM или YYYY
+        in: query
+        name: date
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/deye.StationHistoryResponse'
+      security:
+      - BearerAuth: []
+      summary: История мощности и энергии облачной станции
+      tags:
+      - CRM · Объекты
+  /crm/sites/{id}/telemetry:
+    get:
+      parameters:
+      - description: ID объекта из каталога
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Текущие данные и оборудование станции Deye
       tags:
       - CRM · Объекты
   /crm/tasks:

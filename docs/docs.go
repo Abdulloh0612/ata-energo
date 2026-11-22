@@ -1716,6 +1716,36 @@ const docTemplate = `{
                 }
             }
         },
+        "/crm/sites/{id}/alerts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Объекты"
+                ],
+                "summary": "Аварии облачной станции за последние 30 дней",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/deye.StationAlertListResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/crm/sites/{id}/client": {
             "put": {
                 "security": [
@@ -1743,6 +1773,86 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/api.siteClientInput"
                         }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/sites/{id}/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Объекты"
+                ],
+                "summary": "История мощности и энергии облачной станции",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "D",
+                            "M",
+                            "Y",
+                            "T"
+                        ],
+                        "type": "string",
+                        "description": "D — сутки, M — месяц, Y — год, T — всё время",
+                        "name": "mode",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD, YYYY-MM или YYYY",
+                        "name": "date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/deye.StationHistoryResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/sites/{id}/telemetry": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CRM · Объекты"
+                ],
+                "summary": "Текущие данные и оборудование станции Deye",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID объекта из каталога",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
