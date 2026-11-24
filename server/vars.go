@@ -47,6 +47,10 @@ const (
 	DemoModeVar             = "DEMO_MODE"
 	DemoIntervalVar         = "DEMO_INTERVAL" // секунд
 
+	ValueCloudsEnabledVar      = "VALUECLOUDS_ENABLED"
+	ValueCloudsUsernameVar     = "VALUECLOUDS_USERNAME"
+	ValueCloudsPasswordSHA1Var = "VALUECLOUDS_PASSWORD_SHA1"
+
 	// Deye Cloud OpenAPI
 	DeyeEnabledVar        = "DEYE_ENABLED"
 	DeyeBaseURLVar        = "DEYE_BASE_URL"
@@ -79,7 +83,7 @@ func LoadEnvVars() map[string]string {
 		DeviceOfflineTimeoutVar, DemoModeVar, DemoIntervalVar,
 		DeyeEnabledVar, DeyeBaseURLVar, DeyeAppIDVar, DeyeAppSecretVar, DeyeEmailVar, DeyeUsernameVar,
 		DeyeMobileVar, DeyeCountryCodeVar, DeyePasswordVar, DeyeCompanyIDVar, DeyePollIntervalVar,
-		DeyeOfflineTimeoutVar,
+		DeyeOfflineTimeoutVar, ValueCloudsEnabledVar, ValueCloudsUsernameVar, ValueCloudsPasswordSHA1Var,
 	}
 
 	vars := make(map[string]string, len(keys))
@@ -110,6 +114,7 @@ func LoadEnvVars() map[string]string {
 		DemoModeVar:             "false",
 		DemoIntervalVar:         "2",
 		DeyeEnabledVar:          "true",
+		ValueCloudsEnabledVar:   "true",
 		DeyeBaseURLVar:          "https://eu1-developer.deyecloud.com",
 		DeyePollIntervalVar:     "180",
 		DeyeOfflineTimeoutVar:   "600",

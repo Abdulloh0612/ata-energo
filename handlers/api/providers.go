@@ -28,19 +28,20 @@ const installationQuery = `WITH catalog AS (
 		SELECT CASE WHEN count(DISTINCT client_id)=1 THEN min(client_id) END AS owner_id,
 			coalesce(array_agg(id ORDER BY id),ARRAY[]::bigint[]) AS modem_ids
 		FROM modems
-		WHERE s.provider_code='deye' AND connection->>'protocol'='deye_cloud'
+		WHERE ((s.provider_code='deye' AND connection->>'protocol'='deye_cloud')
+			OR (s.provider_code='valueclouds' AND connection->>'protocol'='valueclouds_cloud'))
 			AND connection->>'account_id'=s.credential_id::text AND connection->>'station_id'=s.external_id
 	) m ON true
 ), legacy AS (
 	SELECT 'm'||m.id::text AS id,NULL::bigint AS catalog_id,
-		CASE WHEN m.connection->>'protocol'='deye_cloud' THEN 'deye' ELSE 'local' END AS provider_code,
+		CASE m.connection->>'protocol' WHEN 'deye_cloud' THEN 'deye' WHEN 'valueclouds_cloud' THEN 'valueclouds' ELSE 'local' END AS provider_code,
 		m.serial AS external_id,a.id AS credential_id,m.client_id,
 		coalesce(nullif(m.site,''),nullif(m.name,''),m.serial) AS name,c.address,'Asia/Bishkek' AS timezone,
 		NULL::double precision AS latitude,NULL::double precision AS longitude,
 		CASE m.status WHEN 'online' THEN 'normal' ELSE 'offline' END AS status,false AS archived,
 		m.last_seen AS last_synced_at,ARRAY[m.id] AS modem_ids
 	FROM modems m JOIN clients c ON c.id=m.client_id
-	LEFT JOIN vendor_accounts a ON m.connection->>'protocol'='deye_cloud' AND a.id::text=m.connection->>'account_id'
+	LEFT JOIN vendor_accounts a ON m.connection->>'protocol' IN ('deye_cloud','valueclouds_cloud') AND a.id::text=m.connection->>'account_id'
 	WHERE NOT EXISTS(SELECT 1 FROM catalog k WHERE m.id=ANY(k.modem_ids))
 ), installations AS (
 	SELECT * FROM catalog UNION ALL SELECT * FROM legacy

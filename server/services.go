@@ -22,18 +22,19 @@ type Services struct {
 	VendorRepo repositories.VendorAccountRepository
 
 	// Application services
-	Auth       *services.AuthService
-	Users      *services.UserService
-	Clients    *services.ClientService
-	Modems     *services.ModemService
-	Devices    *services.DeviceService
-	Telemetry  *services.TelemetryService
-	Discovery  *services.DiscoveryService
-	Deye       *services.DeyeService
-	Background *services.BackgroundService
-	Collector  *services.VendorCollector
-	Catalog    *services.ProviderCatalog
-	MQTT       *services.MQTTWorker
+	Auth        *services.AuthService
+	Users       *services.UserService
+	Clients     *services.ClientService
+	Modems      *services.ModemService
+	Devices     *services.DeviceService
+	Telemetry   *services.TelemetryService
+	Discovery   *services.DiscoveryService
+	Deye        *services.DeyeService
+	ValueClouds *services.ValueCloudsService
+	Background  *services.BackgroundService
+	Collector   *services.VendorCollector
+	Catalog     *services.ProviderCatalog
+	MQTT        *services.MQTTWorker
 }
 
 func NewServices(e Essentials) (Services, error) {
@@ -78,10 +79,18 @@ func NewServices(e Essentials) (Services, error) {
 	discoverySvc := services.NewDiscoveryService(agentRepo, taskRepo, foundRepo, modemRepo, modemSvc, telemetrySvc)
 	deyeSvc := services.NewDeyeService(vendorRepo, modemRepo, clientRepo, modemSvc, e.Logger)
 
+	valueCloudsSvc := services.NewValueCloudsService(vendorRepo, modemRepo, clientRepo, modemSvc)
+
 	// Драйверы облаков производителей (как в solar-aggregator): сейчас Deye Cloud
 	registry := services.NewVendorRegistry()
+	catalogAdapters := map[string]services.SiteCatalogAdapter{}
+	if EnvBool(e.Vars[ValueCloudsEnabledVar]) {
+		registry.Register(valueCloudsSvc)
+		catalogAdapters["valueclouds"] = valueCloudsSvc
+	}
 	if EnvBool(e.Vars[DeyeEnabledVar]) {
 		registry.Register(deyeSvc)
+		catalogAdapters["deye"] = deyeSvc
 	}
 	collector := services.NewVendorCollector(registry, modemRepo, telemetrySvc, e.Logger,
 		EnvSeconds(e.Vars[DeyePollIntervalVar], 180))
@@ -98,25 +107,26 @@ func NewServices(e Essentials) (Services, error) {
 	}
 
 	return Services{
-		Essentials: e,
-		UserRepo:   userRepo,
-		ClientRepo: clientRepo,
-		ModemRepo:  modemRepo,
-		DeviceRepo: deviceRepo,
-		AlertRepo:  alertRepo,
-		VendorRepo: vendorRepo,
-		Auth:       authSvc,
-		Users:      userSvc,
-		Clients:    clientSvc,
-		Modems:     modemSvc,
-		Devices:    deviceSvc,
-		Telemetry:  telemetrySvc,
-		Discovery:  discoverySvc,
-		Deye:       deyeSvc,
-		Background: background,
-		Collector:  collector,
-		Catalog:    services.NewProviderCatalog(e.Pool, map[string]services.SiteCatalogAdapter{"deye": deyeSvc}),
-		MQTT:       mqttWorker,
+		Essentials:  e,
+		UserRepo:    userRepo,
+		ClientRepo:  clientRepo,
+		ModemRepo:   modemRepo,
+		DeviceRepo:  deviceRepo,
+		AlertRepo:   alertRepo,
+		VendorRepo:  vendorRepo,
+		Auth:        authSvc,
+		Users:       userSvc,
+		Clients:     clientSvc,
+		Modems:      modemSvc,
+		Devices:     deviceSvc,
+		Telemetry:   telemetrySvc,
+		Discovery:   discoverySvc,
+		Deye:        deyeSvc,
+		ValueClouds: valueCloudsSvc,
+		Background:  background,
+		Collector:   collector,
+		Catalog:     services.NewProviderCatalog(e.Pool, catalogAdapters),
+		MQTT:        mqttWorker,
 	}, nil
 }
 

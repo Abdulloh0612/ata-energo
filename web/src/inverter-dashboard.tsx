@@ -15,17 +15,39 @@ import { api, useLiveDevices, usePrefs } from "./core";
 import { Empty, Failure, Loading } from "./ui";
 import "./inverter-dashboard.css";
 
-type Point = { key: string; value: string; unit: string };
+type Point = {
+  key: string;
+  value: string;
+  unit: string;
+  label?: string;
+  group?: Group;
+  updated?: string;
+};
 type Flow = Record<string, unknown>;
 type Snapshot = {
   device: {
-    deviceId: number;
+    deviceId: number | string;
     deviceSn: string;
     deviceType: string;
     productId?: string;
   };
   reading: { deviceState: number; collectionTime: number; dataList: Point[] };
   flow: Flow;
+  metadata?: {
+    name: string;
+    serial: string;
+    pn: string;
+    sn: string;
+    address: number;
+    code: number;
+    logger_type: string;
+    firmware: string;
+    logger_firmware: string;
+    utc_offset_seconds: number;
+  } | null;
+  active_parameters?: Point[];
+  chart_fields?: { optional: string; order: number; visable: boolean }[];
+  warnings?: string[];
 };
 type Site = {
   id: string;
@@ -129,13 +151,13 @@ function groupOf(key: string): Group {
   if (/temperature/.test(n)) return "temperature";
   if (/^dc|^pv|solar/.test(n)) return "pv";
   if (
-    /grid|energybuy|energysell|energypurchased|electricitypurchas|externalct/.test(
+    /^gd|grid|energybuy|energysell|energypurchased|electricitypurchas|externalct/.test(
       n,
     )
   )
     return "grid";
-  if (/^load|consumption|ups/.test(n)) return "load";
-  if (/^battery|^soc$|^batt|charge|discharg/.test(n)) return "battery";
+  if (/^bc|^load|consumption|ups/.test(n)) return "load";
+  if (/^bt|^battery|^soc$|^batt|charge|discharg/.test(n)) return "battery";
   if (/^gen|generator/.test(n)) return "generator";
   if (/^ac|^inverter|^totalinverter|production/.test(n)) return "ac";
   if (/rated|systemtime|invertertype|country|outputpowerlevel/.test(n))
@@ -143,6 +165,26 @@ function groupOf(key: string): Group {
   return "other";
 }
 const labels: Record<string, string> = {
+  PVPower: "Мощность PV",
+  LoadPower: "Мощность нагрузки",
+  GridPower: "Мощность сети",
+  pv_voltage: "Напряжение PV1",
+  pv_output_power: "Мощность PV",
+  grid_active_power: "Мощность сети",
+  gd_rating_voltage: "Напряжение сети",
+  bt_battery_capacity: "Заряд батареи",
+  bt_voltage_1: "Напряжение батареи",
+  bt_battery_current: "Ток батареи",
+  battery_active_power: "Мощность батареи",
+  load_active_power: "Мощность нагрузки",
+  energy_today: "Выработка за день",
+  energy_total: "Общая выработка",
+  load_energy_today: "Потребление за день",
+  load_energy_total: "Общее потребление",
+  energy_today_to_grid: "Продажа за день",
+  energy_total_to_grid: "Общая продажа",
+  energy_today_from_grid: "Покупка за день",
+  energy_total_from_grid: "Общая покупка",
   Production: "Выработка",
   "GridFeed-in": "Отдача в сеть",
   Consumption: "Потребление",
@@ -177,30 +219,119 @@ const labels: Record<string, string> = {
   BMSChargeVoltage: "Напряжение заряда BMS",
   BMSDisChargeVoltage: "Напряжение разряда BMS",
 };
+const sourceLabels: Record<string, string> = {
+  "Load voltage": "Напряжение нагрузки",
+  "PV1 voltage": "Напряжение PV1",
+  "PV2 voltage": "Напряжение PV2",
+  "Parallel state": "Параллельный режим",
+};
+function pointLabel(p: Pick<Point, "key" | "label">) {
+  return labels[p.key] || sourceLabels[p.label || ""] || p.label || p.key;
+}
+function pointGroup(p: Point): Group {
+  return p.group && p.group in groupLabels ? p.group : groupOf(p.key);
+}
+function offsetLabel(seconds: number) {
+  return (
+    "UTC" +
+    (seconds < 0 ? "−" : "+") +
+    String(Math.floor(Math.abs(seconds) / 3600)).padStart(2, "0") +
+    ":" +
+    String(Math.floor((Math.abs(seconds) % 3600) / 60)).padStart(2, "0")
+  );
+}
 function displayPoint(point: Point | undefined) {
   if (!point || point.value === "") return { value: "—", unit: "" };
   const value = numeric(point.value);
-  if (point.unit === "W" && value !== null && Math.abs(value) >= 1000)
-    return { value: format(value / 1000, 3), unit: "кВт" };
-  return { value: point.value, unit: point.unit };
+  if (value !== null && ["w", "kw"].includes(point.unit.toLowerCase())) {
+    const watts = value * (point.unit.toLowerCase() === "kw" ? 1000 : 1);
+    return Math.abs(watts) >= 1000
+      ? { value: format(watts / 1000, 3), unit: "кВт" }
+      : { value: format(watts, 3), unit: "Вт" };
+  }
+  return {
+    value: point.value,
+    unit:
+      ({ V: "В", A: "А", kWh: "кВт·ч", Hz: "Гц" } as Record<string, string>)[
+        point.unit
+      ] || point.unit,
+  };
 }
-function FieldList({ points }: { points: Point[] }) {
-  return points.length ? (
+function hasContent(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value);
+  return (
+    typeof value === "string" &&
+    !["", "--", "—", "n/a", "null", "undefined", "nan"].includes(
+      value.trim().toLowerCase(),
+    )
+  );
+}
+function hasPoint(point: Point | undefined): point is Point {
+  return !!point && hasContent(point.value);
+}
+const metricAliases: Record<string, string[]> = {
+  DailyActiveProduction: ["energy_today"],
+  TotalActiveProduction: ["energy_total"],
+  PVPower: ["pv_output_power", "TotalSolarPower", "TotalPVPower"],
+  LoadPower: [
+    "load_active_power",
+    "UPSLoadPower",
+    "TotalConsumptionPower",
+    "TotalLoadPower",
+  ],
+  SOC: ["bt_battery_capacity", "battery_percent"],
+  BatteryVoltage: ["bt_voltage_1"],
+  BatteryCurrent1: ["bt_battery_current"],
+  GridPower: ["grid_active_power", "TotalGridPower"],
+};
+const energyMetrics = [
+  "DailyActiveProduction",
+  "TotalActiveProduction",
+  "PVPower",
+  "LoadPower",
+  "TotalInverterOutputPower",
+  "ACOutputFrequencyR",
+];
+const batteryMetrics = [
+  "DailyChargingEnergy",
+  "DailyDischargingEnergy",
+  "TotalChargeEnergy",
+  "TotalDischargeEnergy",
+];
+function metricPoint(points: Point[], key: string) {
+  const candidates = [key, ...(metricAliases[key] || [])];
+  return candidates
+    .map((candidate) =>
+      points.find((p) => norm(p.key) === norm(candidate) && hasPoint(p)),
+    )
+    .find(Boolean);
+}
+type DetailEntry = { label: string; value: string | number | null | undefined };
+function Details({ entries }: { entries: DetailEntry[] }) {
+  const available = entries.filter((entry) => hasContent(entry.value));
+  if (!available.length) return null;
+  return (
     <dl className="inverter-fields">
-      {points.map((p) => (
-        <div key={p.key}>
-          <dt>{labels[p.key] || p.key}</dt>
-          <dd>
-            {displayPoint(p).value}
-            {displayPoint(p).unit && " " + displayPoint(p).unit}
-          </dd>
+      {available.map((entry, index) => (
+        <div key={entry.label + ":" + index}>
+          <dt>{entry.label}</dt>
+          <dd>{entry.value}</dd>
         </div>
       ))}
     </dl>
-  ) : (
-    <p className="muted inverter-no-field">
-      Источник пока не передал эти параметры
-    </p>
+  );
+}
+function FieldList({ points }: { points: Point[] }) {
+  return (
+    <Details
+      entries={points.filter(hasPoint).map((point) => {
+        const shown = displayPoint(point);
+        return {
+          label: pointLabel(point),
+          value: [shown.value, shown.unit].filter(Boolean).join(" "),
+        };
+      })}
+    />
   );
 }
 function exportCSV(name: string, rows: unknown[][]) {
@@ -335,16 +466,14 @@ function InverterFlow({
             });
           }}
         >
-          {key === "battery" && (
+          {key === "battery" && soc !== null && (
             <span className="inverter-soc">{format(soc, 0)} %</span>
           )}
           <span className="inverter-node-icon">
             <Icon size={23} />
           </span>
           <strong>{name}</strong>
-          <b>
-            {value === null ? "—" : format(Math.abs(value) / 1000) + " кВт"}
-          </b>
+          {value !== null && <b>{format(Math.abs(value) / 1000)} кВт</b>}
           {key === "grid" && voltage !== null && (
             <small className={voltage < 50 ? "danger" : "muted"}>
               {voltage < 50 ? "Сеть отключена" : "Сеть подключена"}
@@ -372,8 +501,24 @@ function PhaseTable({
     power: Point | undefined;
   }[];
 }) {
-  const value = (p: Point | undefined) =>
-    [displayPoint(p).value, displayPoint(p).unit].filter(Boolean).join(" ");
+  const available = rows.filter(
+    (row) =>
+      hasPoint(row.voltage) || hasPoint(row.current) || hasPoint(row.power),
+  );
+  if (!available.length) return null;
+  const columns = (
+    [
+      ["voltage", "Напряжение"],
+      ["current", "Ток"],
+      ["power", "Мощность"],
+    ] as const
+  ).filter(([key]) => available.some((row) => hasPoint(row[key])));
+  const value = (point: Point | undefined) =>
+    hasPoint(point)
+      ? [displayPoint(point).value, displayPoint(point).unit]
+          .filter(Boolean)
+          .join(" ")
+      : "—";
   return (
     <section>
       <h3>{title}</h3>
@@ -382,18 +527,18 @@ function PhaseTable({
           <thead>
             <tr>
               <th>Канал</th>
-              <th>Напряжение</th>
-              <th>Ток</th>
-              <th>Мощность</th>
+              {columns.map(([key, label]) => (
+                <th key={key}>{label}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {available.map((row) => (
               <tr key={row.name}>
                 <th>{row.name}</th>
-                <td>{value(row.voltage)}</td>
-                <td>{value(row.current)}</td>
-                <td>{value(row.power)}</td>
+                {columns.map(([key]) => (
+                  <td key={key}>{value(row[key])}</td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -419,16 +564,21 @@ function Conversion({ active }: { active: boolean }) {
   );
 }
 function MetricTiles({ points, keys }: { points: Point[]; keys: string[] }) {
+  const available = keys.flatMap((key) => {
+    const point = metricPoint(points, key);
+    return point ? [{ key, point }] : [];
+  });
+  if (!available.length) return null;
   return (
     <div className="inverter-tiles">
-      {keys.map((key, index) => {
-        const p = points.find((v) => v.key === key);
+      {available.map(({ key, point }, index) => {
+        const shown = displayPoint(point);
         return (
           <div className={"inverter-tile tone-" + (index % 4)} key={key}>
-            <small>{labels[key] || key}</small>
+            <small>{labels[key] || pointLabel(point)}</small>
             <strong>
-              {displayPoint(p).value}
-              <span>{displayPoint(p).unit}</span>
+              {shown.value}
+              <span>{shown.unit}</span>
             </strong>
           </div>
         );
@@ -631,10 +781,14 @@ export function InverterDashboard({
   deviceId: string;
   onClose: () => void;
 }) {
-  const cloud = site.provider_code === "deye" && site.id.startsWith("s");
+  const cloud =
+    ["deye", "valueclouds"].includes(site.provider_code) &&
+    site.id.startsWith("s");
   const devices = useLiveDevices();
   const path =
-    "/crm/sites/" +
+    (site.provider_code === "valueclouds"
+      ? "/crm/valueclouds/sites/"
+      : "/crm/sites/") +
     encodeURIComponent(site.id) +
     "/devices/" +
     encodeURIComponent(deviceId);
@@ -739,17 +893,60 @@ export function InverterDashboard({
       generator: [],
       other: [],
     };
-    for (const point of points) result[groupOf(point.key)].push(point);
+    for (const point of points.filter(hasPoint))
+      result[pointGroup(point)].push(point);
+    // Both providers supply the same measured flow fields, even when raw register names differ.
+    for (const section of ["pv", "grid", "load", "battery"] as const) {
+      const raw = data?.flow[section];
+      const measured = (
+        !Array.isArray(raw) && raw && typeof raw === "object" ? raw : {}
+      ) as Record<string, unknown>;
+      for (const [field, unit, label] of [
+        ["power", "W", "Мощность"],
+        ["voltage", "V", "Напряжение"],
+        ["current", "A", "Ток"],
+        ["soc", "%", "Заряд батареи"],
+      ]) {
+        if (section === "pv" && field !== "power") continue;
+        const value =
+          field === "power"
+            ? flowPart(data?.flow || {}, section)
+            : numeric(measured[field]);
+        if (
+          value === null ||
+          result[section].some(
+            (p) =>
+              p.unit.toLowerCase() === unit.toLowerCase() ||
+              (unit === "W" && p.unit.toLowerCase() === "kw"),
+          )
+        )
+          continue;
+        result[section].push({
+          key: "flow_" + section + "_" + field,
+          label,
+          value: String(value),
+          unit,
+          group: section,
+        });
+      }
+    }
     return result;
-  }, [points]);
+  }, [points, data?.flow]);
   const find = (...keys: string[]) =>
     points.find((p) => keys.some((key) => norm(key) === norm(p.key)));
   useEffect(() => {
     if (!points.length || initialized.current) return;
     initialized.current = true;
-    const available = defaults.filter((key) =>
-      points.some((p) => p.key === key),
-    );
+    const available = (
+      site.provider_code === "valueclouds"
+        ? [
+            "pv_output_power",
+            "grid_active_power",
+            "load_active_power",
+            "battery_active_power",
+          ]
+        : defaults
+    ).filter((key) => points.some((p) => p.key === key));
     const initial = available.length
       ? available
       : points
@@ -758,7 +955,7 @@ export function InverterDashboard({
           .map((p) => p.key);
     setDraft(initial);
     setSelected(initial);
-  }, [points]);
+  }, [points, site.provider_code]);
   const history = useQuery<History>({
     queryKey: [
       path + "/history",
@@ -971,12 +1168,35 @@ export function InverterDashboard({
       }),
     ),
   ).sort((a, b) => a - b);
-  const pvRows = pvChannels.map((i) => ({
-    name: "PV" + i,
-    voltage: find("DCVoltagePV" + i, "PV" + i + "Voltage"),
-    current: find("DCCurrentPV" + i, "PV" + i + "Current"),
-    power: find("DCPowerPV" + i, "PV" + i + "Power"),
-  }));
+  const sourcePV = points.flatMap((p) => {
+    const match = p.label?.match(/^PV(\d+)\s+(voltage|current|power)$/i);
+    return match
+      ? [{ point: p, index: Number(match[1]), kind: match[2].toLowerCase() }]
+      : [];
+  });
+  const pvRows = (
+    site.provider_code === "valueclouds"
+      ? Array.from(new Set(sourcePV.map((p) => p.index)))
+          .sort((a, b) => a - b)
+          .map((i) => ({
+            name: "PV" + i,
+            voltage: sourcePV.find((p) => p.index === i && p.kind === "voltage")
+              ?.point,
+            current: sourcePV.find((p) => p.index === i && p.kind === "current")
+              ?.point,
+            power: sourcePV.find((p) => p.index === i && p.kind === "power")
+              ?.point,
+          }))
+      : pvChannels.map((i) => ({
+          name: "PV" + i,
+          voltage: find("DCVoltagePV" + i, "PV" + i + "Voltage"),
+          current: find("DCCurrentPV" + i, "PV" + i + "Current"),
+          power: find("DCPowerPV" + i, "PV" + i + "Power"),
+        }))
+  ).filter(
+    (row) =>
+      hasPoint(row.voltage) || hasPoint(row.current) || hasPoint(row.power),
+  );
   const acRows = ["RUA", "SVB", "TWC"]
     .map((phase, i) => ({
       name: "L" + (i + 1),
@@ -984,18 +1204,127 @@ export function InverterDashboard({
       current: find("ACCurrent" + phase, "InverterCurrentL" + (i + 1)),
       power: find("InverterOutputPowerL" + (i + 1)),
     }))
-    .filter((row) => row.voltage || row.current || row.power);
-  const visiblePoints = points.filter((p) =>
-    (p.key + " " + (labels[p.key] || ""))
-      .toLocaleLowerCase()
-      .includes(search.toLocaleLowerCase()),
+    .filter(
+      (row) =>
+        hasPoint(row.voltage) || hasPoint(row.current) || hasPoint(row.power),
+    );
+  const visiblePoints = points
+    .filter(hasPoint)
+    .filter((p) =>
+      (p.key + " " + pointLabel(p))
+        .toLocaleLowerCase()
+        .includes(search.toLocaleLowerCase()),
+    );
+  const soc = numeric(
+    find("SOC", "battery_percent", "bt_battery_capacity")?.value,
   );
-  const soc = numeric(find("SOC", "battery_percent")?.value);
   const batteryPower = flowPart(data?.flow || {}, "battery");
   const busy = cloud ? snapshot.isPending : devices.isPending;
-  const graphOptions = chartPoints.filter(
-    (p) => p.unit && numeric(p.value) !== null,
-  );
+  const graphOptions = chartPoints
+    .filter(
+      (p) =>
+        p.unit &&
+        numeric(p.value) !== null &&
+        (site.provider_code !== "valueclouds" ||
+          mode !== "D" ||
+          [
+            "pv_output_power",
+            "grid_active_power",
+            "load_active_power",
+            "battery_active_power",
+          ].includes(p.key)),
+    )
+    .sort((a, b) => {
+      const order = new Map(
+        (data?.chart_fields || []).map((field) => [
+          field.optional,
+          field.order,
+        ]),
+      );
+      return (
+        (order.get(a.key) ?? Number.MAX_SAFE_INTEGER) -
+        (order.get(b.key) ?? Number.MAX_SAFE_INTEGER)
+      );
+    });
+  const infoEntries: DetailEntry[] = [
+    { label: "Название устройства", value: data?.metadata?.name || site.name },
+    {
+      label: "Серийный номер",
+      value: data?.metadata?.serial || data?.device.deviceSn,
+    },
+    {
+      label: "Идентификатор устройства",
+      value:
+        data?.metadata?.serial && data.metadata.serial !== data.device.deviceSn
+          ? data.device.deviceSn
+          : undefined,
+    },
+    { label: "Модель / код устройства", value: data?.device.productId },
+    {
+      label: "Тип инвертора",
+      value:
+        find("InverterType")?.value ||
+        (
+          {
+            "0_5412_1": "Трёхфазный гибридный HV",
+            "0_5411_1": "Трёхфазный гибридный LV",
+            "0_5407_1": "Однофазный гибридный",
+          } as Record<string, string>
+        )[data?.device.productId || ""],
+    },
+    { label: "Тип логгера", value: data?.metadata?.logger_type },
+    { label: "Коллектор", value: data?.metadata?.pn },
+    { label: "Адрес устройства", value: data?.metadata?.address },
+    {
+      label: "Часовой пояс",
+      value: data?.metadata
+        ? offsetLabel(data.metadata.utc_offset_seconds)
+        : site.timezone,
+    },
+    { label: "Системное время", value: find("SystemTime")?.value },
+    ...groups.basic
+      .filter(
+        (point) => !["systemtime", "invertertype"].includes(norm(point.key)),
+      )
+      .map((point) => ({
+        label: pointLabel(point),
+        value: [point.value, point.unit].filter(Boolean).join(" "),
+      })),
+  ];
+  const versionEntries: DetailEntry[] = [
+    { label: "Прошивка устройства", value: data?.metadata?.firmware },
+    { label: "Прошивка логгера", value: data?.metadata?.logger_firmware },
+    ...groups.version.map((point) => ({
+      label: pointLabel(point),
+      value: [point.value, point.unit].filter(Boolean).join(" "),
+    })),
+  ];
+  const hasVersions = versionEntries.some((entry) => hasContent(entry.value));
+  const activeParameters = (data?.active_parameters || []).filter(hasPoint);
+  const summaryPoints = [...points];
+  for (const [key, section] of [
+    ["PVPower", "pv"],
+    ["LoadPower", "load"],
+    ["TotalInverterOutputPower", "inverter"],
+  ]) {
+    const value = flowPart(data?.flow || {}, section);
+    if (!metricPoint(summaryPoints, key) && value !== null)
+      summaryPoints.push({ key, value: String(value), unit: "W" });
+  }
+  const hasEnergy =
+    pvRows.length > 0 ||
+    acRows.length > 0 ||
+    energyMetrics.some((key) => metricPoint(summaryPoints, key));
+  const hasBattery =
+    groups.battery.length > 0 ||
+    groups.bms.length > 0 ||
+    soc !== null ||
+    batteryPower !== null;
+  const hasFlow =
+    data &&
+    ["pv", "grid", "load", "battery", "inverter"].some(
+      (key) => flowPart(data.flow, key) !== null,
+    );
   const dirty = draftKeys.join(",") !== chartKeys.join(",");
   return (
     <div className="inverter-dashboard">
@@ -1085,157 +1414,170 @@ export function InverterDashboard({
         <span className="muted">Обновление каждые 3 минуты</span>
       </nav>
       {error && <Failure message={error.message} retry={update} />}
+      {data?.warnings?.length ? (
+        <div role="status">
+          {data.warnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
+        </div>
+      ) : null}
       {busy && <Loading />}
       {!busy && !data && !error && (
         <Empty>Инвертор не найден среди оборудования этой станции</Empty>
       )}
       {data && tab === "data" && (
         <>
-          <div className="inverter-top-grid">
-            <section className="card inverter-section">
-              <div className="inverter-card-head">
-                <h2>Потоки энергии</h2>
-                <span className="muted">Данные инвертора</span>
-              </div>
-              <InverterFlow data={data} />
-            </section>
+          <div className={hasFlow ? "inverter-top-grid" : "inverter-stack"}>
+            {hasFlow && (
+              <section className="card inverter-section">
+                <div className="inverter-card-head">
+                  <h2>Потоки энергии</h2>
+                  <span className="muted">Текущие измерения</span>
+                </div>
+                <InverterFlow data={data} />
+              </section>
+            )}
             <div className="inverter-stack">
               <section className="card inverter-section">
                 <h2>Основные сведения</h2>
-                <dl className="inverter-fields">
-                  <div>
-                    <dt>Серийный номер</dt>
-                    <dd>{data.device.deviceSn}</dd>
-                  </div>
-                  <div>
-                    <dt>Модель / Product ID</dt>
-                    <dd>{data.device.productId || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Тип инвертора</dt>
-                    <dd>
-                      {find("InverterType")?.value ||
-                        (
-                          {
-                            "0_5412_1": "Трёхфазный гибридный HV",
-                            "0_5411_1": "Трёхфазный гибридный LV",
-                            "0_5407_1": "Однофазный гибридный",
-                          } as Record<string, string>
-                        )[data.device.productId || ""] ||
-                        "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Системное время</dt>
-                    <dd>{find("SystemTime")?.value || "—"}</dd>
-                  </div>
-                </dl>
-                <FieldList points={groups.basic} />
+                <Details entries={infoEntries} />
               </section>
-              <section className="card inverter-section">
-                <h2>Версии</h2>
-                <FieldList points={groups.version} />
-              </section>
+              {hasVersions && (
+                <section className="card inverter-section">
+                  <h2>Версии</h2>
+                  <Details entries={versionEntries} />
+                </section>
+              )}
             </div>
           </div>
-          <section className="card inverter-section" id="inverter-pv">
-            <div className="inverter-conversion-grid">
-              <PhaseTable title="PV Input · постоянный ток" rows={pvRows} />
-              <Conversion
-                active={
-                  data.reading.deviceState !== 3 &&
-                  (Math.abs(flowPart(data.flow, "pv") ?? 0) > 0 ||
-                    Math.abs(flowPart(data.flow, "inverter") ?? 0) > 0)
-                }
-              />
-              <div id="inverter-ac">
-                <PhaseTable title="AC Output · переменный ток" rows={acRows} />
-              </div>
-            </div>
-            <MetricTiles
-              points={points}
-              keys={[
-                "DailyActiveProduction",
-                "TotalActiveProduction",
-                "ACOutputFrequencyR",
-                "TotalInverterOutputPower",
-              ]}
-            />
-          </section>
-          <div className="inverter-two-grid">
-            {(["grid", "load"] as Group[]).map((group) => (
-              <section
-                className="card inverter-section"
-                id={"inverter-" + group}
-                key={group}
-              >
-                <h2>{groupLabels[group]}</h2>
-                <FieldList points={groups[group]} />
-              </section>
-            ))}
-          </div>
-          <section className="card inverter-section" id="inverter-battery">
-            <h2>Аккумулятор</h2>
-            <div className="inverter-battery-grid">
-              <div className="inverter-battery-visual">
-                <strong>{format(soc, 0)} %</strong>
-                <div className="inverter-battery-shell">
-                  <span
-                    style={{
-                      width: Math.min(100, Math.max(0, soc ?? 0)) + "%",
-                    }}
-                  />
-                </div>
-                <span>
-                  {batteryPower === null
-                    ? "—"
-                    : batteryPower > 0
-                      ? "Заряд"
-                      : batteryPower < 0
-                        ? "Разряд"
-                        : "Ожидание"}
-                </span>
-                <b>
-                  {format(
-                    batteryPower === null
-                      ? null
-                      : Math.abs(batteryPower) / 1000,
-                  )}{" "}
-                  кВт
-                </b>
-              </div>
-              <FieldList
-                points={groups.battery.filter(
-                  (p) => !/^Daily|^Total/.test(p.key),
+          {activeParameters.length > 0 && (
+            <section className="card inverter-section">
+              <div className="inverter-card-head">
+                <h2>Активные параметры устройства</h2>
+                {activeParameters[0].updated && (
+                  <small className="muted">
+                    Обновлено: {activeParameters[0].updated} ·{" "}
+                    {data.metadata
+                      ? offsetLabel(data.metadata.utc_offset_seconds)
+                      : site.timezone}
+                  </small>
                 )}
-              />
-              <div>
-                <h3>BMS</h3>
-                <FieldList points={groups.bms} />
               </div>
+              <FieldList points={activeParameters} />
+            </section>
+          )}
+          {hasEnergy && (
+            <section className="card inverter-section" id="inverter-pv">
+              <h2>Выработка и мощность</h2>
+              {(pvRows.length > 0 || acRows.length > 0) && (
+                <div
+                  className={
+                    pvRows.length > 0 && acRows.length > 0
+                      ? "inverter-conversion-grid"
+                      : "inverter-stack"
+                  }
+                >
+                  {pvRows.length > 0 && (
+                    <PhaseTable title="PV · постоянный ток" rows={pvRows} />
+                  )}
+                  {pvRows.length > 0 && acRows.length > 0 && (
+                    <Conversion
+                      active={
+                        data.reading.deviceState !== 3 &&
+                        (Math.abs(flowPart(data.flow, "pv") ?? 0) > 0 ||
+                          Math.abs(flowPart(data.flow, "inverter") ?? 0) > 0)
+                      }
+                    />
+                  )}
+                  {acRows.length > 0 && (
+                    <div id="inverter-ac">
+                      <PhaseTable title="AC · переменный ток" rows={acRows} />
+                    </div>
+                  )}
+                </div>
+              )}
+              <MetricTiles points={summaryPoints} keys={energyMetrics} />
+            </section>
+          )}
+          {(groups.grid.length > 0 || groups.load.length > 0) && (
+            <div className="inverter-two-grid">
+              {(["grid", "load"] as Group[])
+                .filter((group) => groups[group].length > 0)
+                .map((group) => (
+                  <section
+                    className="card inverter-section"
+                    id={"inverter-" + group}
+                    key={group}
+                  >
+                    <h2>{groupLabels[group]}</h2>
+                    <FieldList points={groups[group]} />
+                  </section>
+                ))}
             </div>
-            <MetricTiles
-              points={points}
-              keys={[
-                "DailyChargingEnergy",
-                "DailyDischargingEnergy",
-                "TotalChargeEnergy",
-                "TotalDischargeEnergy",
-              ]}
-            />
-          </section>
-          <div className="inverter-two-grid">
-            {(["generator", "temperature", "other"] as Group[]).map((group) => (
-              <section
-                className="card inverter-section"
-                id={"inverter-" + group}
-                key={group}
-              >
-                <h2>{groupLabels[group]}</h2>
-                <FieldList points={groups[group]} />
-              </section>
-            ))}
-          </div>
+          )}
+          {hasBattery && (
+            <section className="card inverter-section" id="inverter-battery">
+              <h2>Аккумулятор</h2>
+              <div className="inverter-battery-grid">
+                {(soc !== null || batteryPower !== null) && (
+                  <div className="inverter-battery-visual">
+                    {soc !== null && (
+                      <>
+                        <strong>{format(soc, 0)} %</strong>
+                        <div className="inverter-battery-shell">
+                          <span
+                            style={{
+                              width: Math.min(100, Math.max(0, soc)) + "%",
+                            }}
+                          />
+                        </div>
+                      </>
+                    )}
+                    {batteryPower !== null && (
+                      <>
+                        <span>
+                          {batteryPower > 0
+                            ? "Заряд"
+                            : batteryPower < 0
+                              ? "Разряд"
+                              : "Ожидание"}
+                        </span>
+                        <b>{format(Math.abs(batteryPower) / 1000)} кВт</b>
+                      </>
+                    )}
+                  </div>
+                )}
+                {groups.battery.length > 0 && (
+                  <FieldList points={groups.battery} />
+                )}
+                {groups.bms.length > 0 && (
+                  <div>
+                    <h3>BMS</h3>
+                    <FieldList points={groups.bms} />
+                  </div>
+                )}
+              </div>
+              <MetricTiles points={points} keys={batteryMetrics} />
+            </section>
+          )}
+          {(["generator", "temperature", "other"] as Group[]).some(
+            (group) => groups[group].length > 0,
+          ) && (
+            <div className="inverter-two-grid">
+              {(["generator", "temperature", "other"] as Group[])
+                .filter((group) => groups[group].length > 0)
+                .map((group) => (
+                  <section
+                    className="card inverter-section"
+                    id={"inverter-" + group}
+                    key={group}
+                  >
+                    <h2>{groupLabels[group]}</h2>
+                    <FieldList points={groups[group]} />
+                  </section>
+                ))}
+            </div>
+          )}
           <section className="card inverter-section">
             <div className="inverter-card-head">
               <div>
@@ -1343,8 +1685,7 @@ export function InverterDashboard({
                         updateDraft(
                           graphOptions
                             .filter(
-                              (p) =>
-                                group === "all" || groupOf(p.key) === group,
+                              (p) => group === "all" || pointGroup(p) === group,
                             )
                             .map((p) => p.key),
                         )
@@ -1356,7 +1697,7 @@ export function InverterDashboard({
                 </div>
                 {(Object.keys(groupLabels) as Group[]).map((group) => {
                   const options = graphOptions.filter(
-                    (p) => groupOf(p.key) === group,
+                    (p) => pointGroup(p) === group,
                   );
                   return options.length ? (
                     <details
@@ -1378,7 +1719,7 @@ export function InverterDashboard({
                             }
                           />
                           <span>
-                            {labels[point.key] || point.key}
+                            {pointLabel(point)}
                             <small>{point.unit}</small>
                           </span>
                         </label>
@@ -1400,29 +1741,37 @@ export function InverterDashboard({
               </aside>
             </div>
           </section>
-          <details className="card inverter-section inverter-all-points">
-            <summary>Все показатели · {points.length}</summary>
-            <div className="inverter-card-head">
-              <div className="row">
-                <input
-                  aria-label="Поиск показателя"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Найти показатель"
-                />
-                {search && (
-                  <button
-                    className="btn"
-                    onClick={() => setSearch("")}
-                    aria-label="Очистить поиск"
-                  >
-                    ×
-                  </button>
-                )}
+          {points.some(hasPoint) && (
+            <details className="card inverter-section inverter-all-points">
+              <summary>
+                Все показатели · {points.filter(hasPoint).length}
+              </summary>
+              <div className="inverter-card-head">
+                <div className="row">
+                  <input
+                    aria-label="Поиск показателя"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Найти показатель"
+                  />
+                  {search && (
+                    <button
+                      className="btn"
+                      onClick={() => setSearch("")}
+                      aria-label="Очистить поиск"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-            <FieldList points={visiblePoints} />
-          </details>
+              {visiblePoints.length ? (
+                <FieldList points={visiblePoints} />
+              ) : (
+                <Empty>Показатели не найдены</Empty>
+              )}
+            </details>
+          )}
         </>
       )}
       {data && tab === "alerts" && (

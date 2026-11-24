@@ -156,7 +156,7 @@ func (r *DeviceRepo) SaveLast(ctx context.Context, d *types.Device) error {
 
 func (r *DeviceRepo) ListStaleOnline(ctx context.Context, before, cloudBefore time.Time) ([]types.Device, error) {
 	rows, err := r.pool.Query(ctx, deviceSelect+` WHERE d.status = 'online' AND d.last_seen <
-		CASE WHEN m.connection->>'protocol' = 'deye_cloud' THEN $2::timestamptz ELSE $1::timestamptz END
+		CASE WHEN m.connection->>'protocol' IN ('deye_cloud','valueclouds_cloud') THEN $2::timestamptz ELSE $1::timestamptz END
 		ORDER BY d.id`, before, cloudBefore)
 	if err != nil {
 		return nil, err

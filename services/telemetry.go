@@ -480,7 +480,7 @@ func (s *TelemetryService) CheckOfflineDevices(ctx context.Context) (int, error)
 		}
 		if mainDev != nil {
 			t := timeout
-			if m.Protocol() == types.ProtocolDeyeCloud {
+			if m.Protocol() == types.ProtocolDeyeCloud || m.Protocol() == types.ProtocolValueClouds {
 				t = int(s.cloudOfflineTimeout.Seconds())
 			}
 			text := fmt.Sprintf("Нет связи с модемом %s («%s») более %d сек.", m.Serial, m.ClientName, t)

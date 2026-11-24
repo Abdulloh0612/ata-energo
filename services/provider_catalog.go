@@ -168,14 +168,15 @@ func (c *ProviderCatalog) Run(ctx context.Context) {
 }
 
 func (c *ProviderCatalog) poll(ctx context.Context) {
-	rows, err := c.pool.Query(ctx, `SELECT a.id FROM vendor_accounts a JOIN providers p ON p.code=a.vendor WHERE a.is_active AND p.enabled AND NOT p.mock ORDER BY a.id`)
+	rows, err := c.pool.Query(ctx, `SELECT a.id,p.adapter FROM vendor_accounts a JOIN providers p ON p.code=a.vendor WHERE a.is_active AND p.enabled AND NOT p.mock ORDER BY a.id`)
 	if err != nil {
 		return
 	}
 	var ids []int64
 	for rows.Next() {
 		var id int64
-		if rows.Scan(&id) == nil {
+		var adapter string
+		if rows.Scan(&id, &adapter) == nil && c.adapters[adapter] != nil {
 			ids = append(ids, id)
 		}
 	}

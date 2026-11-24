@@ -31,6 +31,7 @@ interface Agent {
 interface Account {
   id: number;
   name: string;
+  provider_code: string;
   is_active: boolean;
   last_success_at: string | null;
   catalog_error: string;
@@ -123,7 +124,9 @@ export function Integrations() {
   const ac = useList<Account[]>("/crm/integrations/accounts", admin),
     agents = useList<Agent[]>("/agents");
   const [agent, setAgent] = useState<Agent | null>(null),
-    [add, setAdd] = useState(false);
+    [add, setAdd] = useState<"deye" | "valueclouds" | null>(null);
+  const [showSecrets, setShowSecrets] = useState(false);
+  const [editing, setEditing] = useState<Account | null>(null);
   const sync = useMutation({
     mutationFn: (id: number) =>
       api("/crm/integrations/accounts/" + id + "/sync", { method: "POST" }),
@@ -134,13 +137,25 @@ export function Integrations() {
   });
   const save = useMutation({
     mutationFn: (data: FormData) =>
-      api("/deye/accounts", {
-        method: "POST",
-        body: JSON.stringify(Object.fromEntries(data)),
-      }),
-    onSuccess: () => {
-      setAdd(false);
-      toast("Аккаунт подключён");
+      api<Account>(
+        "/" + add + "/accounts" + (editing ? "/" + editing.id : ""),
+        {
+          method: editing ? "PATCH" : "POST",
+          body: JSON.stringify(
+            Object.fromEntries(
+              [...data].filter(
+                ([key, value]) => !editing || key === "name" || value !== "",
+              ),
+            ),
+          ),
+        },
+      ),
+    onSuccess: (account) => {
+      setAdd(null);
+      setEditing(null);
+      setShowSecrets(false);
+      toast("Аккаунт сохранён");
+      if (add === "valueclouds") sync.mutate(account.id);
       void cache.invalidateQueries();
     },
   });
@@ -151,16 +166,23 @@ export function Integrations() {
         subtitle="Источники данных и связь с оборудованием"
         action={
           admin && (
-            <button
-              className="btn primary"
-              onClick={() => {
-                save.reset();
-                setAdd(true);
-              }}
-            >
-              <Plus size={16} />
-              Подключить Deye
-            </button>
+            <div className="row actions">
+              {(["deye", "valueclouds"] as const).map((provider) => (
+                <button
+                  key={provider}
+                  className="btn primary"
+                  onClick={() => {
+                    save.reset();
+                    setEditing(null);
+                    setShowSecrets(false);
+                    setAdd(provider);
+                  }}
+                >
+                  <Plus size={16} />
+                  Подключить {provider === "deye" ? "Deye" : "ValueClouds"}
+                </button>
+              ))}
+            </div>
           )
         }
       />
@@ -228,6 +250,19 @@ export function Integrations() {
                     </small>
                   )}
                 </div>
+                {a.provider_code === "valueclouds" && (
+                  <button
+                    className="btn"
+                    onClick={() => {
+                      save.reset();
+                      setEditing(a);
+                      setShowSecrets(false);
+                      setAdd("valueclouds");
+                    }}
+                  >
+                    Изменить
+                  </button>
+                )}
                 <button
                   className="btn"
                   disabled={!a.is_active || sync.isPending}
@@ -278,10 +313,17 @@ export function Integrations() {
         {agent && <AgentLog agent={agent} />}
       </Modal>
       <Modal
-        title="Подключить Deye Cloud"
-        open={add}
+        title={
+          (editing ? "Изменить аккаунт " : "Подключить ") +
+          (add === "valueclouds" ? "ValueClouds" : "Deye Cloud")
+        }
+        open={!!add}
         onClose={() => {
-          if (!save.isPending) setAdd(false);
+          if (!save.isPending) {
+            setAdd(null);
+            setEditing(null);
+            setShowSecrets(false);
+          }
         }}
       >
         <form
@@ -293,21 +335,57 @@ export function Integrations() {
             if (!save.isPending) save.mutate(new FormData(e.currentTarget));
           }}
         >
-          {[
-            ["name", "Название", "text"],
-            ["email", "Почта аккаунта", "email"],
-            ["app_id", "App ID", "text"],
-            ["app_secret", "App Secret", "password"],
-            ["password", "Пароль Deye Cloud", "password"],
-          ].map(([k, n, t]) => (
+          {(add === "valueclouds"
+            ? [
+                ["name", "Название", "text"],
+                ["username", "Логин ValueClouds", "text"],
+                ["password", "Пароль ValueClouds", "password"],
+              ]
+            : [
+                ["name", "Название", "text"],
+                ["email", "Почта аккаунта", "email"],
+                ["app_id", "App ID", "text"],
+                ["app_secret", "App Secret", "password"],
+                ["password", "Пароль Deye Cloud", "password"],
+              ]
+          ).map(([k, n, t]) => (
             <label key={k}>
               {n}
-              <input type={t} name={k} required autoComplete="off" />
+              <input
+                type={t === "password" && showSecrets ? "text" : t}
+                name={k}
+                defaultValue={k === "name" ? editing?.name : ""}
+                required={!editing || k === "name"}
+                autoComplete={
+                  k === "password"
+                    ? "current-password"
+                    : k === "username"
+                      ? "username"
+                      : "off"
+                }
+              />
             </label>
           ))}
+          {editing && (
+            <small>
+              Оставьте логин и пароль пустыми, чтобы сохранить текущие данные.
+            </small>
+          )}
+          <button
+            type="button"
+            className="btn"
+            aria-pressed={showSecrets}
+            onClick={() => setShowSecrets(!showSecrets)}
+          >
+            {showSecrets ? "Скрыть пароли" : "Показать пароли"}
+          </button>
           {save.isError && <Failure message={save.error.message} />}
-          <button className="btn primary" disabled={save.isPending}>
-            Подключить
+          <button
+            className="btn primary"
+            disabled={save.isPending}
+            aria-busy={save.isPending}
+          >
+            {editing ? "Сохранить" : "Подключить"}
           </button>
         </form>
       </Modal>

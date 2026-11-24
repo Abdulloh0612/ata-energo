@@ -34,7 +34,7 @@ type CloudSnapshot = {
   flow: Record<string, unknown>;
   inverter_flow: Record<string, unknown> | null;
   devices: {
-    deviceId: number;
+    deviceId: number | string;
     deviceSn: string;
     deviceType: string;
     connectStatus: number;
@@ -117,7 +117,7 @@ function flowValues(
     grid: power("grid"),
     battery: power("battery"),
     load: power("load"),
-    soc,
+    soc: soc ?? (raw?.battery as { soc?: number } | undefined)?.soc ?? null,
     offGrid:
       typeof (raw?.grid as { voltage?: number } | undefined)?.voltage ===
       "number"
@@ -373,7 +373,9 @@ function StationOverview({ site }: { site: Station }) {
   const navigate = useNavigate();
   const cache = useQueryClient();
   const theme = usePrefs((p) => p.theme);
-  const cloud = site.provider_code === "deye" && site.id.startsWith("s");
+  const cloud =
+    ["deye", "valueclouds"].includes(site.provider_code) &&
+    site.id.startsWith("s");
   const localDevices = useLiveDevices();
   const attached = useMemo(
     () =>
@@ -392,7 +394,10 @@ function StationOverview({ site }: { site: Station }) {
       device_type,
     })),
   );
-  const path = "/crm/sites/" + encodeURIComponent(site.id);
+  const path =
+    (site.provider_code === "valueclouds"
+      ? "/crm/valueclouds/sites/"
+      : "/crm/sites/") + encodeURIComponent(site.id);
   const snapshot = useList<CloudSnapshot>(path + "/telemetry", cloud, 180000);
   const snapshotRef = useRef(snapshot.data);
   snapshotRef.current = snapshot.data;

@@ -51,8 +51,14 @@ func main() {
 	} else {
 		e.Logger.Warn("MQTT_ENABLED=false — MQTT не запущен")
 	}
-	if server.EnvBool(e.Vars[server.DeyeEnabledVar]) {
+	if server.EnvBool(e.Vars[server.ValueCloudsEnabledVar]) {
+		if err := s.ValueClouds.EnsureEnvAccount(ctx, e.Vars[server.ValueCloudsUsernameVar], e.Vars[server.ValueCloudsPasswordSHA1Var]); err != nil {
+			log.Fatal("ValueClouds: не удалось создать аккаунт из окружения")
+		}
+	}
+	if server.EnvBool(e.Vars[server.DeyeEnabledVar]) || server.EnvBool(e.Vars[server.ValueCloudsEnabledVar]) {
 		go s.Collector.Run(ctx)
+		go s.Catalog.Run(ctx)
 	}
 	s.Background.Run(ctx) // проверка offline (+ демо, если DEMO_MODE=true)
 }

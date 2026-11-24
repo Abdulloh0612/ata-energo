@@ -160,6 +160,7 @@ const states: Record<string, string> = {
 const builtInProviders: Record<string, string> = {
   local: "Локальный модем",
   deye: "Deye Cloud",
+  valueclouds: "ValueClouds",
   eybond: "Eybond",
 };
 const units = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });

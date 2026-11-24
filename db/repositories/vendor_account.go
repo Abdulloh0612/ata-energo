@@ -25,16 +25,18 @@ func NewVendorAccountRepo(pool *pgxpool.Pool, box *credentialbox.Box) *VendorAcc
 
 type credentialFields struct {
 	AppID, AppSecret, Email, Username, Mobile, CountryCode, PasswordSHA256 string
+	PasswordSHA1                                                           string
 	CompanyID                                                              *int64
 }
 
 func fieldsOf(a types.VendorAccount) credentialFields {
-	return credentialFields{a.AppID, a.AppSecret, a.Email, a.Username, a.Mobile, a.CountryCode, a.PasswordSHA256, a.CompanyID}
+	return credentialFields{a.AppID, a.AppSecret, a.Email, a.Username, a.Mobile, a.CountryCode, a.PasswordSHA256, a.PasswordSHA1, a.CompanyID}
 }
 
 func (f credentialFields) apply(a *types.VendorAccount) {
 	a.AppID, a.AppSecret, a.Email, a.Username, a.Mobile, a.CountryCode, a.PasswordSHA256, a.CompanyID =
 		f.AppID, f.AppSecret, f.Email, f.Username, f.Mobile, f.CountryCode, f.PasswordSHA256, f.CompanyID
+	a.PasswordSHA1 = f.PasswordSHA1
 }
 
 func accountAAD(a types.VendorAccount) []byte {
@@ -51,7 +53,7 @@ func (r *VendorAccountRepo) seal(a types.VendorAccount) ([]byte, error) {
 
 const vendorSelect = `SELECT v.id, v.vendor, v.name, v.base_url, v.fields_encrypted, v.key_version,
 	v.is_active, EXISTS(SELECT 1 FROM providers p WHERE p.code=v.vendor AND p.enabled), v.last_error, v.last_sync_at, v.created_at,
-	(SELECT COUNT(*) FROM modems m WHERE m.connection->>'protocol' = 'deye_cloud'
+	(SELECT COUNT(*) FROM modems m WHERE m.connection->>'protocol' IN ('deye_cloud','valueclouds_cloud')
 		AND m.connection->>'account_id' = v.id::text)
 	FROM vendor_accounts v`
 
@@ -67,6 +69,9 @@ func (r *VendorAccountRepo) scanVendor(row rowScanner) (types.VendorAccount, err
 		return a, err
 	}
 	a.HasCredentials = a.AppID != "" && a.AppSecret != "" && a.PasswordSHA256 != ""
+	if a.Vendor == types.VendorValueClouds {
+		a.HasCredentials = a.Username != "" && a.PasswordSHA1 != ""
+	}
 	return a, nil
 }
 

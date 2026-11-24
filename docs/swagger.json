@@ -2159,6 +2159,235 @@
                 }
             }
         },
+        "/crm/valueclouds/sites/{id}/alerts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Аварии станции ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/valueclouds/sites/{id}/devices/{device}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Показания инвертора ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ключ устройства из каталога",
+                        "name": "device",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/valueclouds/sites/{id}/devices/{device}/alerts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Аварии инвертора ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ключ устройства из каталога",
+                        "name": "device",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/valueclouds/sites/{id}/devices/{device}/history": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "История инвертора ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Ключ устройства из каталога",
+                        "name": "device",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Период",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ValueCloudsHistoryInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/valueclouds/sites/{id}/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "История станции ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "D, M, Y, T",
+                        "name": "mode",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата выбранного периода",
+                        "name": "date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/crm/valueclouds/sites/{id}/telemetry": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Телеметрия станции ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/devices/": {
             "get": {
                 "security": [
@@ -4465,6 +4694,255 @@
                     }
                 }
             }
+        },
+        "/valueclouds/accounts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Аккаунты ValueClouds",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Аккаунты ValueClouds",
+                "parameters": [
+                    {
+                        "description": "Учётные данные",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.VendorAccountWrite"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/valueclouds/accounts/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Аккаунт ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Аккаунт ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Аккаунт ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Учётные данные",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.VendorAccountWrite"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/valueclouds/accounts/{id}/devices": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Устройства аккаунта ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/valueclouds/accounts/{id}/import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Импортировать устройство ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Устройство и клиент",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.ValueCloudsImportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/valueclouds/accounts/{id}/test": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ValueClouds"
+                ],
+                "summary": "Проверить подключение ValueClouds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID аккаунта или объекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -4474,6 +4952,17 @@
                 "detail": {
                     "type": "string",
                     "example": "Страница не найдена."
+                }
+            }
+        },
+        "api.ValueCloudsHistoryInput": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
                 }
             }
         },
@@ -5743,6 +6232,23 @@
                 }
             }
         },
+        "services.ValueCloudsImportRequest": {
+            "type": "object",
+            "properties": {
+                "client": {
+                    "type": "integer"
+                },
+                "device_key": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "site": {
+                    "type": "string"
+                }
+            }
+        },
         "types.Agent": {
             "type": "object",
             "properties": {
@@ -6472,6 +6978,9 @@
                     "type": "string"
                 },
                 "password": {
+                    "type": "string"
+                },
+                "password_sha1": {
                     "type": "string"
                 },
                 "username": {

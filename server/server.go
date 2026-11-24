@@ -145,6 +145,7 @@ func registerRoutes(app *fiber.App, s Services) {
 	manager := middleware.ManagerOnly()
 
 	api.Get("/me", jwt, authH.Me)
+	apihandler.RegisterValueClouds(api.Group("", jwt), s.Pool, s.ValueClouds)
 	apihandler.RegisterCRM(api.Group("/crm", jwt), s.Pool)
 	apihandler.RegisterProviders(api.Group("/crm", jwt), s.Pool, s.Catalog, s.Deye)
 
@@ -287,6 +288,13 @@ func (s *Server) startBackground(ctx context.Context) {
 			e.Vars[DeyePasswordVar], deyeCompanyID(e.Vars[DeyeCompanyIDVar])); err != nil {
 			e.Logger.Warn("Deye: не удалось создать аккаунт из .env", zap.Error(err))
 		}
+	}
+	if EnvBool(e.Vars[ValueCloudsEnabledVar]) {
+		if err := e.ValueClouds.EnsureEnvAccount(ctx, e.Vars[ValueCloudsUsernameVar], e.Vars[ValueCloudsPasswordSHA1Var]); err != nil {
+			e.Logger.Warn("ValueClouds: не удалось создать аккаунт из .env", zap.Error(err))
+		}
+	}
+	if EnvBool(e.Vars[DeyeEnabledVar]) || EnvBool(e.Vars[ValueCloudsEnabledVar]) {
 		go e.Collector.Run(ctx)
 		go e.Catalog.Run(ctx)
 	}

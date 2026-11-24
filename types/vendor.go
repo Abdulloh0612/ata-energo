@@ -4,9 +4,11 @@ import "time"
 
 // Вендоры облачных API.
 const VendorDeye = "deye"
+const VendorValueClouds = "valueclouds"
 
 // Протоколы чтения данных модема (Modem.Connection["protocol"]).
 const ProtocolDeyeCloud = "deye_cloud"
+const ProtocolValueClouds = "valueclouds_cloud"
 
 // VendorAccount — учётная запись облака производителя (Deye Cloud OpenAPI).
 //
@@ -22,6 +24,7 @@ type VendorAccount struct {
 	Username        string     `json:"-"`
 	Mobile          string     `json:"-"`
 	CountryCode     string     `json:"-"`
+	PasswordSHA1    string     `json:"-"`
 	PasswordSHA256  string     `json:"-"`
 	CompanyID       *int64     `json:"-"`
 	IsActive        bool       `json:"is_active"`
@@ -35,15 +38,16 @@ type VendorAccount struct {
 
 // VendorAccountWrite — тело POST/PATCH /api/deye/accounts/.
 type VendorAccountWrite struct {
-	Name        *string `json:"name"`
-	BaseURL     *string `json:"base_url"`
-	AppID       *string `json:"app_id"`
-	AppSecret   *string `json:"app_secret"`
-	Email       *string `json:"email"`
-	Username    *string `json:"username"`
-	Mobile      *string `json:"mobile"`
-	CountryCode *string `json:"country_code"`
-	Password    *string `json:"password"`
-	CompanyID   *int64  `json:"company_id"`
-	IsActive    *bool   `json:"is_active"`
+	Name         *string `json:"name"`
+	BaseURL      *string `json:"base_url"`
+	AppID        *string `json:"app_id"`
+	AppSecret    *string `json:"app_secret"`
+	Email        *string `json:"email"`
+	Username     *string `json:"username"`
+	Mobile       *string `json:"mobile"`
+	CountryCode  *string `json:"country_code"`
+	Password     *string `json:"password"`
+	PasswordSHA1 *string `json:"password_sha1"`
+	CompanyID    *int64  `json:"company_id"`
+	IsActive     *bool   `json:"is_active"`
 }

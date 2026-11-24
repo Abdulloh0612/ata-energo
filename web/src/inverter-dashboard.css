@@ -94,13 +94,14 @@
 }
 .inverter-top-grid {
   display: grid;
+  align-items: start;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 18px;
 }
 .inverter-stack {
   display: grid;
   gap: 18px;
-  align-content: stretch;
+  align-content: start;
 }
 .inverter-two-grid {
   display: grid;
@@ -311,12 +312,13 @@
   animation: none;
 }
 .inverter-tiles {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 20px;
 }
 .inverter-tile {
+  flex: 1 1 160px;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px;
@@ -351,7 +353,7 @@
 }
 .inverter-battery-grid {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 24px;
   align-items: center;
 }
@@ -579,7 +581,6 @@
     max-height: 350px;
   }
   .inverter-tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .inverter-alerts article {
     grid-template-columns: auto 1fr;
@@ -690,4 +691,19 @@
 }
 .inverter-all-points[open] > summary {
   margin-bottom: 18px;
+}
+
+.inverter-two-grid > :last-child:nth-child(odd),
+.inverter-fields > :last-child:nth-child(odd),
+.inverter-stack > :only-child,
+.inverter-battery-grid > :only-child {
+  grid-column: 1 / -1;
+}
+@media (max-width: 800px) {
+  .inverter-battery-grid > :last-child:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+  .inverter-tile {
+    flex-basis: 130px;
+  }
 }

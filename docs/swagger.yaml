@@ -8,6 +8,13 @@ definitions:
         example: Страница не найдена.
         type: string
     type: object
+  api.ValueCloudsHistoryInput:
+    properties:
+      date:
+        type: string
+      mode:
+        type: string
+    type: object
   api.crmRole:
     properties:
       code:
@@ -845,6 +852,17 @@ definitions:
       user:
         $ref: '#/definitions/types.Me'
     type: object
+  services.ValueCloudsImportRequest:
+    properties:
+      client:
+        type: integer
+      device_key:
+        type: string
+      name:
+        type: string
+      site:
+        type: string
+    type: object
   types.Agent:
     properties:
       capabilities:
@@ -1332,6 +1350,8 @@ definitions:
       name:
         type: string
       password:
+        type: string
+      password_sha1:
         type: string
       username:
         type: string
@@ -2661,6 +2681,150 @@ paths:
       summary: Доступные действия
       tags:
       - CRM · Задачи
+  /crm/valueclouds/sites/{id}/alerts:
+    get:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Аварии станции ValueClouds
+      tags:
+      - ValueClouds
+  /crm/valueclouds/sites/{id}/devices/{device}:
+    get:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Ключ устройства из каталога
+        in: path
+        name: device
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Показания инвертора ValueClouds
+      tags:
+      - ValueClouds
+  /crm/valueclouds/sites/{id}/devices/{device}/alerts:
+    get:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Ключ устройства из каталога
+        in: path
+        name: device
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Аварии инвертора ValueClouds
+      tags:
+      - ValueClouds
+  /crm/valueclouds/sites/{id}/devices/{device}/history:
+    post:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Ключ устройства из каталога
+        in: path
+        name: device
+        required: true
+        type: string
+      - description: Период
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.ValueCloudsHistoryInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: История инвертора ValueClouds
+      tags:
+      - ValueClouds
+  /crm/valueclouds/sites/{id}/history:
+    get:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: D, M, Y, T
+        in: query
+        name: mode
+        required: true
+        type: string
+      - description: Дата выбранного периода
+        in: query
+        name: date
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: История станции ValueClouds
+      tags:
+      - ValueClouds
+  /crm/valueclouds/sites/{id}/telemetry:
+    get:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Телеметрия станции ValueClouds
+      tags:
+      - ValueClouds
   /devices/:
     get:
       parameters:
@@ -4116,6 +4280,159 @@ paths:
       summary: Изменить пользователя (PATCH/PUT). Если передан password — меняет пароль
       tags:
       - Users
+  /valueclouds/accounts:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Аккаунты ValueClouds
+      tags:
+      - ValueClouds
+    post:
+      parameters:
+      - description: Учётные данные
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.VendorAccountWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Аккаунты ValueClouds
+      tags:
+      - ValueClouds
+  /valueclouds/accounts/{id}:
+    delete:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Аккаунт ValueClouds
+      tags:
+      - ValueClouds
+    get:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Аккаунт ValueClouds
+      tags:
+      - ValueClouds
+    patch:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Учётные данные
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/types.VendorAccountWrite'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Аккаунт ValueClouds
+      tags:
+      - ValueClouds
+  /valueclouds/accounts/{id}/devices:
+    get:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Устройства аккаунта ValueClouds
+      tags:
+      - ValueClouds
+  /valueclouds/accounts/{id}/import:
+    post:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Устройство и клиент
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.ValueCloudsImportRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Импортировать устройство ValueClouds
+      tags:
+      - ValueClouds
+  /valueclouds/accounts/{id}/test:
+    post:
+      parameters:
+      - description: ID аккаунта или объекта
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Проверить подключение ValueClouds
+      tags:
+      - ValueClouds
 produces:
 - application/json
 securityDefinitions:

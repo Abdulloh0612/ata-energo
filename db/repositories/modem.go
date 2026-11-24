@@ -167,7 +167,7 @@ func (r *ModemRepo) SetHasGenerator(ctx context.Context, id int64, v bool) error
 // Для облачных (Deye Cloud) — свой, более длинный таймаут: облако обновляет данные раз в несколько минут.
 func (r *ModemRepo) ListStaleOnline(ctx context.Context, before, cloudBefore time.Time) ([]types.Modem, error) {
 	return r.list(ctx, `m.status = 'online' AND m.last_seen <
-		CASE WHEN m.connection->>'protocol' = 'deye_cloud' THEN $2::timestamptz ELSE $1::timestamptz END`, before, cloudBefore)
+		CASE WHEN m.connection->>'protocol' IN ('deye_cloud','valueclouds_cloud') THEN $2::timestamptz ELSE $1::timestamptz END`, before, cloudBefore)
 }
 
 // MarkOfflineIfOnline — update с фильтром status=online: если проверяют два процесса, аварию создаст только один.
