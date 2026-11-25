@@ -248,3 +248,15 @@
     background-image: url("./assets/solar-field-sm.webp");
   }
 }
+
+[data-telegram="true"] body {
+  padding-left: var(--tg-content-safe-area-inset-left, 0px);
+  padding-right: var(--tg-content-safe-area-inset-right, 0px);
+}
+
+[data-telegram="true"] .bottom-nav {
+  padding-bottom: max(
+    env(safe-area-inset-bottom),
+    var(--tg-content-safe-area-inset-bottom, 0px)
+  );
+}

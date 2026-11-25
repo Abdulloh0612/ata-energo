@@ -35,7 +35,9 @@ import {
   X,
 } from "lucide-react";
 import {
+  api,
   beep,
+  loginTelegram,
   cache,
   logout,
   Session,
@@ -62,6 +64,7 @@ import {
   Toasts,
 } from "./ui";
 import { Login } from "./login";
+import { telegram } from "./telegram";
 import "./styles.css";
 import "./mobile.css";
 const Dashboard = lazy(() =>
@@ -69,6 +72,9 @@ const Dashboard = lazy(() =>
 );
 const Alerts = lazy(() =>
   import("./dashboard").then((m) => ({ default: m.Alerts })),
+);
+const AlertDetail = lazy(() =>
+  import("./dashboard").then((m) => ({ default: m.AlertDetail })),
 );
 const Inventory = lazy(() =>
   import("./inventory").then((m) => ({ default: m.InventoryPage })),
@@ -204,48 +210,178 @@ function Palette({ close }: { close: () => void }) {
   );
 }
 function Profile() {
+  const telegramStatus = useList<{
+    linked: boolean;
+    notifications_enabled: boolean;
+    notification_preferences: Record<string, boolean>;
+  }>("/me/telegram");
+  async function updateTelegramSettings(body: object) {
+    setLinkPending(true);
+    setLinkError("");
+    try {
+      const settings = await api("/me/telegram", {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      cache.setQueryData(["/me/telegram"], settings);
+    } catch (error) {
+      setLinkError(
+        error instanceof Error
+          ? error.message
+          : "Не удалось сохранить настройки.",
+      );
+    } finally {
+      setLinkPending(false);
+    }
+  }
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [link, setLink] = useState("");
+  const [linkError, setLinkError] = useState("");
+  const [linkPending, setLinkPending] = useState(false);
+  async function createLink() {
+    setLinkOpen(true);
+    setLink("");
+    setLinkError("");
+    setLinkPending(true);
+    try {
+      setLink(
+        (await api<{ url: string }>("/me/telegram/link", { method: "POST" }))
+          .url,
+      );
+    } catch (error) {
+      setLinkError(
+        error instanceof Error ? error.message : "Не удалось создать ссылку.",
+      );
+    } finally {
+      setLinkPending(false);
+    }
+  }
   const { me } = useSession(),
     prefs = usePrefs();
   return (
-    <Menu.Root>
-      <Menu.Trigger className="profile" aria-label="Профиль и настройки">
-        <span className="avatar">
-          {(me.first_name || me.username).slice(0, 1).toUpperCase()}
-        </span>
-        <span>
-          <b>{me.first_name || me.username}</b>
-          <small>{me.role_display}</small>
-        </span>
-        <ChevronDown size={14} />
-      </Menu.Trigger>
-      <Menu.Portal>
-        <Menu.Content sideOffset={9} className="popover">
-          <Menu.Label>{me.username}</Menu.Label>
-          <Menu.CheckboxItem
-            checked={prefs.notifications}
-            onCheckedChange={(notifications) =>
-              usePrefs.setState({ notifications })
-            }
-          >
-            Уведомления {prefs.notifications && <Check size={14} />}
-          </Menu.CheckboxItem>
-          <Menu.CheckboxItem
-            checked={prefs.sound}
-            onCheckedChange={(sound) => {
-              usePrefs.setState({ sound });
-              if (sound) beep();
-            }}
-          >
-            Звук аварий {prefs.sound && <Check size={14} />}
-          </Menu.CheckboxItem>
-          <Menu.Separator />
-          <Menu.Item onSelect={logout}>
-            <LogOut size={15} />
-            Выйти
-          </Menu.Item>
-        </Menu.Content>
-      </Menu.Portal>
-    </Menu.Root>
+    <>
+      <Menu.Root>
+        <Menu.Trigger className="profile" aria-label="Профиль и настройки">
+          <span className="avatar">
+            {(me.first_name || me.username).slice(0, 1).toUpperCase()}
+          </span>
+          <span>
+            <b>{me.first_name || me.username}</b>
+            <small>{me.role_display}</small>
+          </span>
+          <ChevronDown size={14} />
+        </Menu.Trigger>
+        <Menu.Portal>
+          <Menu.Content sideOffset={9} className="popover">
+            <Menu.Label>{me.username}</Menu.Label>
+            <Menu.CheckboxItem
+              checked={prefs.notifications}
+              onCheckedChange={(notifications) =>
+                usePrefs.setState({ notifications })
+              }
+            >
+              Уведомления {prefs.notifications && <Check size={14} />}
+            </Menu.CheckboxItem>
+            <Menu.CheckboxItem
+              checked={prefs.sound}
+              onCheckedChange={(sound) => {
+                usePrefs.setState({ sound });
+                if (sound) beep();
+              }}
+            >
+              Звук аварий {prefs.sound && <Check size={14} />}
+            </Menu.CheckboxItem>
+            {telegramStatus.data && (
+              <Menu.Item
+                disabled={linkPending}
+                onSelect={() => {
+                  if (telegramStatus.data.linked) {
+                    setLinkError("");
+                    setLinkOpen(true);
+                  } else void createLink();
+                }}
+              >
+                {telegramStatus.data.linked
+                  ? "Уведомления Telegram"
+                  : "Привязать Telegram"}
+              </Menu.Item>
+            )}
+            <Menu.Separator />
+            <Menu.Item onSelect={logout}>
+              <LogOut size={15} />
+              Выйти
+            </Menu.Item>
+          </Menu.Content>
+        </Menu.Portal>
+      </Menu.Root>
+      <Modal
+        title={
+          telegramStatus.data?.linked
+            ? "Уведомления Telegram"
+            : "Привязка Telegram"
+        }
+        open={linkOpen}
+        onClose={() => {
+          setLinkOpen(false);
+          void telegramStatus.refetch();
+        }}
+      >
+        {linkPending && !telegramStatus.data?.linked && <Loading />}
+        {telegramStatus.data?.linked && (
+          <fieldset disabled={linkPending} aria-label="Уведомления Telegram">
+            <p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={telegramStatus.data.notifications_enabled}
+                  onChange={(e) =>
+                    void updateTelegramSettings({
+                      notifications_enabled: e.target.checked,
+                    })
+                  }
+                />{" "}
+                Получать уведомления
+              </label>
+            </p>
+            {Object.entries({
+              incidents: "Аварии",
+              work: "Выезды и задачи",
+              inventory: "Склад",
+              attendance: "Посещаемость",
+            }).map(([key, title]) => (
+              <p key={key}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={
+                      telegramStatus.data.notification_preferences[key] ?? false
+                    }
+                    onChange={(e) =>
+                      void updateTelegramSettings({
+                        notification_preferences: { [key]: e.target.checked },
+                      })
+                    }
+                  />{" "}
+                  {title}
+                </label>
+              </p>
+            ))}
+          </fieldset>
+        )}
+        {linkError && <p role="alert">{linkError}</p>}
+        {link && (
+          <div>
+            <p>
+              Откройте Telegram и нажмите «Запустить». Ссылка действует 10
+              минут.
+            </p>
+            <a className="btn" href={link} target="_blank" rel="noreferrer">
+              Открыть бота
+            </a>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }
 function ThemePicker() {
@@ -440,7 +576,10 @@ function Shell() {
                     ),
                 )}
                 {access.sections.alerts && (
-                  <Route path="/alerts" element={<Alerts />} />
+                  <>
+                    <Route path="/alerts" element={<Alerts />} />
+                    <Route path="/alerts/:id" element={<AlertDetail />} />
+                  </>
                 )}
                 {(["requests", "tasks"] as const).map(
                   (k) =>
@@ -525,22 +664,84 @@ function Shell() {
     </div>
   );
 }
+function TelegramNavigation() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const button = telegram?.BackButton;
+    if (!button || (location.pathname === "/" && !location.search)) return;
+    const back = () => {
+      if (!window.history.state?.idx) void navigate("/", { replace: true });
+      else void navigate(-1);
+    };
+    button.onClick(back);
+    button.show();
+    return () => {
+      button.offClick(back);
+      button.hide();
+    };
+  }, [location.key, location.pathname, location.search, navigate]);
+  return null;
+}
+
 function Root() {
   const token = useAuth((s) => !!s.access),
     theme = usePrefs((s) => s.theme);
+  const [loginError, setLoginError] = useState("");
+  const telegramAttempt = useRef(token);
+  const [telegramPending, setTelegramPending] = useState(!!telegram && !token);
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    const color = getComputedStyle(document.documentElement)
-      .getPropertyValue("--bg")
-      .trim();
-    if (color)
-      document
-        .querySelector('meta[name="theme-color"]')
-        ?.setAttribute("content", color);
+    if (!telegram || telegramAttempt.current) return;
+    telegramAttempt.current = true;
+    void loginTelegram(telegram.initData)
+      .catch((error: unknown) =>
+        setLoginError(
+          error instanceof Error
+            ? error.message
+            : "Вход через Telegram недоступен.",
+        ),
+      )
+      .finally(() => setTelegramPending(false));
+  }, []);
+  useEffect(() => {
+    telegram?.ready();
+    telegram?.expand();
+    if (telegram) document.documentElement.dataset.telegram = "true";
+    const updateTheme = () => {
+      document.documentElement.dataset.theme = telegram
+        ? telegram.colorScheme === "dark"
+          ? "night"
+          : "solar"
+        : theme;
+      const color = getComputedStyle(document.documentElement)
+        .getPropertyValue("--bg")
+        .trim();
+      if (color)
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.setAttribute("content", color);
+    };
+    updateTheme();
+    telegram?.onEvent("themeChanged", updateTheme);
+    return () => telegram?.offEvent("themeChanged", updateTheme);
   }, [theme]);
   const me = useList<Me>("/me", token),
     access = useList<Access>("/crm/access", token && !!me.data);
-  if (!token) return <Login />;
+  if (!token) {
+    if (telegramPending) {
+      return <Loading />;
+    }
+    return (
+      <>
+        {loginError && (
+          <p className="card session-error" role="alert">
+            {loginError}
+          </p>
+        )}
+        <Login />
+      </>
+    );
+  }
   if (me.isError || access.isError)
     return (
       <div className="card session-error">
@@ -558,6 +759,7 @@ function Root() {
   if (!me.data || !access.data) return <Loading />;
   return (
     <Session.Provider value={{ me: me.data, access: access.data }}>
+      <TelegramNavigation />
       <Shell key={me.data.id} />
     </Session.Provider>
   );

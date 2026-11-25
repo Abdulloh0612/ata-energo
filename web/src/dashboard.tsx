@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   Activity,
   AlarmClock,
@@ -440,6 +445,74 @@ export function Alerts() {
           ))
         )}
       </section>
+    </>
+  );
+}
+
+const incidentActions = {
+  open: { label: "Открыта", next: "accepted", action: "Принял в работу" },
+  accepted: { label: "Принята в работу", next: "onsite", action: "На объекте" },
+  onsite: { label: "На объекте", next: "resolved", action: "Устранено" },
+  resolved: { label: "Устранена", next: "", action: "" },
+};
+
+export function AlertDetail() {
+  const { id } = useParams();
+  const { me } = useSession();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const path = "/alerts/" + id;
+  const alert = useList<
+    AlertItem & {
+      client_name: string;
+      response_status: keyof typeof incidentActions;
+      response_user_id: number | null;
+    }
+  >(path, true, 15000);
+  if (alert.isPending) return <Loading />;
+  if (alert.isError) return <Failure retry={alert.refetch} />;
+  const item = alert.data;
+  const step = incidentActions[item.response_status];
+  const mayRespond =
+    ["admin", "it_head"].includes(me.role) ||
+    (me.role === "technician" &&
+      (item.response_status === "open" || item.response_user_id === me.id));
+  async function advance() {
+    if (busy || !step?.next) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api(path + "/response", {
+        method: "POST",
+        body: JSON.stringify({ status: step.next }),
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось обновить статус.");
+    } finally {
+      await alert.refetch();
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <PageHead title="Авария" subtitle={item.client_name} />
+      <section className="card chartcard">
+        <CardHead title={step?.label || "Авария"} />
+        <p>{item.text}</p>
+        {error && <p role="alert">{error}</p>}
+        {mayRespond && step?.next && (
+          <button
+            className="btn"
+            disabled={busy}
+            onClick={() => void advance()}
+          >
+            {busy ? "Обновление…" : step.action}
+          </button>
+        )}
+      </section>
+      <Link className="btn" to="/alerts">
+        Журнал аварий
+      </Link>
     </>
   );
 }

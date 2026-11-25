@@ -1,3 +1,4 @@
+import { useTelegramMainButton } from "./telegram";
 import { validateForm } from "./form";
 import {
   useEffect,
@@ -790,6 +791,7 @@ function WorkDrawer({
   const [confirm, setConfirm] = useState<"discard" | "remove" | null>(null);
   const [fieldError, setFieldError] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const previousFocus = useRef(
     document.activeElement instanceof HTMLElement
       ? document.activeElement
@@ -836,6 +838,12 @@ function WorkDrawer({
       onSave(record.id);
     },
   });
+  useTelegramMainButton(
+    formRef,
+    !!draft && !confirm,
+    mutation.isPending,
+    draft?.status === "closed" ? "Закрыть и сохранить" : "Сохранить",
+  );
   function requestClose() {
     if (mutation.isPending) return;
     if (dirty) setConfirm("discard");
@@ -938,6 +946,7 @@ function WorkDrawer({
             </div>
           ) : draft ? (
             <form
+              ref={formRef}
               noValidate
               onSubmitCapture={validateForm}
               onSubmit={submit}

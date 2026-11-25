@@ -144,6 +144,7 @@ func registerRoutes(app *fiber.App, s Services) {
 	jwt := middleware.JWTAuth(s.Auth)
 	manager := middleware.ManagerOnly()
 
+	apihandler.RegisterTelegram(api, s.Telegram, jwt)
 	api.Get("/me", jwt, authH.Me)
 	apihandler.RegisterValueClouds(api.Group("", jwt), s.Pool, s.ValueClouds)
 	apihandler.RegisterCRM(api.Group("/crm", jwt), s.Pool)
@@ -277,6 +278,10 @@ func (s *Server) startBackground(ctx context.Context) {
 	e := s.services
 	go e.Hub.Run(ctx)
 	go e.Background.Run(ctx)
+	if e.Telegram != nil {
+		go e.Telegram.Run(ctx, e.Logger)
+		go e.Telegram.RunDelivery(ctx)
+	}
 	if e.MQTT != nil {
 		go e.MQTT.Run(ctx)
 	} else {

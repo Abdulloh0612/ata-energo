@@ -44,6 +44,10 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 	if u == nil || !u.IsActive || bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)) != nil {
 		return nil, Detail(http.StatusUnauthorized, "Не найдено активной учётной записи с указанными данными")
 	}
+	return s.loginUser(ctx, u)
+}
+
+func (s *AuthService) loginUser(ctx context.Context, u *types.User) (*LoginResult, error) {
 	pair, err := s.jwt.GenerateTokenPair(u.ID, u.Role)
 	if err != nil {
 		return nil, err

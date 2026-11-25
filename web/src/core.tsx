@@ -72,12 +72,18 @@ async function response<T>(r: Response): Promise<T> {
   }
   return data as T;
 }
-export async function login(username: string, password: string) {
+export function login(username: string, password: string) {
+  return loginWith("login", { username, password });
+}
+export function loginTelegram(initData: string) {
+  return loginWith("telegram", { init_data: initData });
+}
+async function loginWith(method: string, body: Record<string, string>) {
   const res = await response<{ access: string; refresh: string; user: Me }>(
-    await fetch("/api/auth/login", {
+    await fetch("/api/auth/" + method, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify(body),
     }),
   );
   cache.clear();

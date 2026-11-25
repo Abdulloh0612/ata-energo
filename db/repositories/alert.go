@@ -19,13 +19,13 @@ func NewAlertRepo(pool *pgxpool.Pool) *AlertRepo {
 }
 
 const alertSelect = `SELECT a.id, a.device_id, d.device_id, d.device_type, d.client_id, c.name, a.kind, a.text,
-	a.created_at, a.is_read
+	a.created_at, a.is_read, a.response_status, a.response_user_id
 	FROM alerts a JOIN devices d ON d.id = a.device_id JOIN clients c ON c.id = d.client_id`
 
 func scanAlert(row rowScanner) (types.Alert, error) {
 	var a types.Alert
 	err := row.Scan(&a.ID, &a.DeviceRef, &a.DeviceCode, &a.DeviceType, &a.ClientID, &a.ClientName, &a.Kind, &a.Text,
-		&a.CreatedAt, &a.IsRead)
+		&a.CreatedAt, &a.IsRead, &a.ResponseStatus, &a.ResponseUserID)
 	return a, err
 }
 

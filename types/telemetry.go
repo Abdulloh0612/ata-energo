@@ -37,16 +37,18 @@ const (
 
 // Alert — авария или пропажа связи.
 type Alert struct {
-	ID         int64     `json:"id"`
-	DeviceRef  int64     `json:"device"`
-	DeviceCode string    `json:"device_code"`
-	DeviceType string    `json:"device_type"`
-	ClientID   int64     `json:"client_id"`
-	ClientName string    `json:"client_name"`
-	Kind       string    `json:"kind"`
-	Text       string    `json:"text"`
-	CreatedAt  time.Time `json:"created_at"`
-	IsRead     bool      `json:"is_read"`
+	ID             int64     `json:"id"`
+	DeviceRef      int64     `json:"device"`
+	DeviceCode     string    `json:"device_code"`
+	DeviceType     string    `json:"device_type"`
+	ClientID       int64     `json:"client_id"`
+	ClientName     string    `json:"client_name"`
+	Kind           string    `json:"kind"`
+	Text           string    `json:"text"`
+	CreatedAt      time.Time `json:"created_at"`
+	IsRead         bool      `json:"is_read"`
+	ResponseStatus string    `json:"response_status"`
+	ResponseUserID *int64    `json:"response_user_id"`
 }
 
 // AlertFilter — фильтры списка аварий.

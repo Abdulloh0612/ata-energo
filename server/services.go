@@ -23,6 +23,7 @@ type Services struct {
 
 	// Application services
 	Auth        *services.AuthService
+	Telegram    *services.Telegram
 	Users       *services.UserService
 	Clients     *services.ClientService
 	Modems      *services.ModemService
@@ -69,6 +70,10 @@ func NewServices(e Essentials) (Services, error) {
 	telemetrySvc := services.NewTelemetryService(modemRepo, deviceRepo, telemetryRepo, alertRepo, modemSvc,
 		e.Hub, e.Logger, offline, cloudOffline)
 	authSvc := services.NewAuthService(userRepo, clientRepo, e.JWTMgr)
+	telegramSvc, err := services.NewTelegram(e.Pool, authSvc, os.Getenv("BOT_TOKEN"), os.Getenv("TELEGRAM_BOT_USERNAME"), os.Getenv("TELEGRAM_APP_URL"))
+	if err != nil {
+		return Services{}, err
+	}
 	userSvc := services.NewUserService(userRepo, func(ctx context.Context, role string) (bool, error) {
 		var exists bool
 		err := e.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM crm_roles WHERE code=$1)`, role).Scan(&exists)
@@ -115,6 +120,7 @@ func NewServices(e Essentials) (Services, error) {
 		AlertRepo:   alertRepo,
 		VendorRepo:  vendorRepo,
 		Auth:        authSvc,
+		Telegram:    telegramSvc,
 		Users:       userSvc,
 		Clients:     clientSvc,
 		Modems:      modemSvc,
