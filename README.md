@@ -18,8 +18,3 @@ CRM для мониторинга солнечных станций. Сотру�
 | Разобраться в оформлении и поведении интерфейса | [Дизайн](docs/DESIGN.md) · [Правила взаимодействия](docs/UX-CONTRACT.md) |
 
 Исторические материалы — [исходное задание](docs/archive/ORIGINAL_REQUIREMENTS.md) и [справочник прежнего проекта QR Parking](docs/archive/QR_PARKING_API.md).
-
-## Hybrid Doctor
-
-CRM автосервиса доступна из меню сотрудников по пути `/hybrid-doctor/`.
-[Перенос данных и запуск](hybrid-doctor/README.md).

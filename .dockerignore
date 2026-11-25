@@ -10,7 +10,3 @@ _qr-parking/
 *.zip
 web/node_modules/
 web/dist/
-
-hybrid-doctor/data/
-hybrid-doctor/**/__pycache__/
-hybrid-doctor/__pycache__/

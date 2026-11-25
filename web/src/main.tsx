@@ -15,7 +15,6 @@ import { Command } from "cmdk";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import {
   Bell,
-  CarFront,
   Building2,
   Check,
   ChevronDown,
@@ -474,12 +473,6 @@ function Shell() {
     document.title =
       (customer ? "Личный кабинет" : page.label) + " · Ата Энерго";
   }, [customer, page.label]);
-  const hybridDoctorLink = (
-    <a href="/hybrid-doctor/" title="Hybrid Doctor">
-      <CarFront size={19} />
-      <span>Hybrid Doctor</span>
-    </a>
-  );
   const navItems = links.map((n) => (
     <NavLink key={n.key} to={n.to} end={n.to === "/"} title={n.label}>
       <n.icon size={19} />
@@ -502,10 +495,7 @@ function Shell() {
           <Link to="/" aria-label="Ата Энерго, обзор">
             <Brand />
           </Link>
-          <nav aria-label="Главная навигация">
-            {navItems}
-            {hybridDoctorLink}
-          </nav>
+          <nav aria-label="Главная навигация">{navItems}</nav>
           <button
             className="collapse"
             onClick={() => usePrefs.setState({ compact: !compact })}
@@ -643,7 +633,6 @@ function Shell() {
       <Modal title="Разделы" open={mobile} onClose={() => setMobile(false)}>
         <nav className="mobile-links" onClick={() => setMobile(false)}>
           {navItems}
-          {hybridDoctorLink}
         </nav>
       </Modal>
       <Modal title="Оповещения" open={bell} onClose={() => setBell(false)}>
