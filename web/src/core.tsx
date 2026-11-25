@@ -113,7 +113,7 @@ export function refreshAccess() {
   });
   return refreshJob;
 }
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function apiResponse(path: string, init: RequestInit): Promise<Response> {
   const { access, refresh } = useAuth.getState();
   const request = (token: string) =>
     fetch("/api" + path, {
@@ -130,7 +130,15 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (refresh === useAuth.getState().refresh)
       r = await request(useAuth.getState().access);
   }
-  return response<T>(r);
+  return r;
+}
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return response<T>(await apiResponse(path, init));
+}
+export async function apiBlob(path: string, signal: AbortSignal): Promise<Blob> {
+  const result = await apiResponse(path, { signal });
+  if (!result.ok) await response(result);
+  return result.blob();
 }
 export function useList<T>(
   path: string,

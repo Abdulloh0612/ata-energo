@@ -1,0 +1,58 @@
+.service-archive {
+  display: grid;
+  gap: 16px;
+}
+
+.service-select {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 28rem);
+}
+
+.service-record {
+  border-top: 1px solid var(--border);
+}
+
+.service-record summary {
+  cursor: pointer;
+  padding: 12px 4px;
+  overflow-wrap: anywhere;
+}
+
+.service-record summary > span + span {
+  margin-inline-start: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.service-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 12px;
+  margin-block: 0 16px;
+}
+
+.service-fields dt {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.service-fields dd {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.service-photo {
+  display: block;
+  max-width: 100%;
+  max-height: 28rem;
+  object-fit: contain;
+  margin-bottom: 16px;
+}
+
+.service-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}

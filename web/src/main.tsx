@@ -27,6 +27,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plug,
+  Warehouse,
   Search,
   ShieldCheck,
   Sun,
@@ -91,6 +92,7 @@ const Admin = lazy(() =>
 const Portal = lazy(() =>
   import("./portal").then((m) => ({ default: m.Portal })),
 );
+const ServiceRecords = lazy(() => import("./service-records"));
 const nav = [
   { key: "overview", to: "/", label: "Обзор", icon: LayoutDashboard },
   { key: "clients", to: "/clients", label: "Клиенты", icon: Users },
@@ -100,11 +102,12 @@ const nav = [
   { key: "requests", to: "/requests", label: "Заявки", icon: ClipboardList },
   { key: "tasks", to: "/tasks", label: "Задачи", icon: ClipboardCheck },
   { key: "integrations", to: "/integrations", label: "Интеграции", icon: Plug },
+  { key: "service-records", to: "/service-records", label: "Склад и архив", icon: Warehouse },
   { key: "admin", to: "/admin", label: "Администрирование", icon: ShieldCheck },
 ];
 function Palette({ close }: { close: () => void }) {
   const navigate = useNavigate(),
-    { access } = useSession(),
+    { access, me } = useSession(),
     [query, setQuery] = useState("");
   const customers =
       useList<{ id: number; name: string; phone: string }[]>("/clients"),
@@ -118,7 +121,7 @@ function Palette({ close }: { close: () => void }) {
     [
       "Разделы",
       nav
-        .filter((n) => access.sections[n.key])
+        .filter((n) => (n.key === "service-records" ? me.role === "admin" : access.sections[n.key]))
         .map((n) => ({ text: n.label, href: n.to })),
     ],
     [
@@ -429,7 +432,7 @@ function Shell() {
     [bell, setBell] = useState(false);
   const alerts = useList<AlertItem[]>("/alerts"),
     seq = useRef(0),
-    links = nav.filter((n) => access.sections[n.key]);
+    links = nav.filter((n) => (n.key === "service-records" ? me.role === "admin" : access.sections[n.key]));
   useEffect(() => {
     setMobile(false);
     setBell(false);
@@ -593,6 +596,9 @@ function Shell() {
                 )}
                 {access.sections.integrations && (
                   <Route path="/integrations" element={<Integrations />} />
+                )}
+                {me.role === "admin" && (
+                  <Route path="/service-records" element={<ServiceRecords />} />
                 )}
                 {access.sections.admin && (
                   <Route path="/admin" element={<Admin />} />

@@ -51,6 +51,7 @@ type workInput struct {
 
 func RegisterCRM(router fiber.Router, pool *pgxpool.Pool) {
 	registerDashboard(router, pool)
+	registerServiceRecords(router, pool)
 	registerRoles(router, pool)
 	registerCRMEquipment(router, pool)
 	for _, kind := range []string{"requests", "tasks"} {
