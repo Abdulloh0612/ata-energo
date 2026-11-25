@@ -61,14 +61,14 @@ func New() (*Server, error) {
 		ReadTimeout:  parseDurationOrDefault(e.Vars[ServerReadTimeoutVar], 15*time.Second),
 		WriteTimeout: parseDurationOrDefault(e.Vars[ServerWriteTimeoutVar], 30*time.Second),
 		AppName:      "Ata Energo API",
-		BodyLimit:    8 * 1024 * 1024,
+		BodyLimit:    25_000_000, // Hybrid Doctor photo uploads
 		ErrorHandler: errorHandler(e.Logger),
 	})
 
 	app.Use(recover.New())
 	app.Use(fiberlogger.New(fiberlogger.Config{
 		Next: func(c *fiber.Ctx) bool {
-			return strings.HasPrefix(c.Path(), "/ws/")
+			return strings.HasPrefix(c.Path(), "/ws/") || strings.HasPrefix(c.Path(), hybridDoctorPath+"/")
 		},
 	}))
 	app.Use(cors.New(cors.Config{
@@ -76,6 +76,17 @@ func New() (*Server, error) {
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization, X-Agent-Token",
 		AllowMethods: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 	}))
+
+	if err := registerHybridDoctor(app); err != nil {
+		e.Pool.Close()
+		return nil, err
+	}
+	app.Use(func(c *fiber.Ctx) error {
+		if len(c.Request().Body()) > 8*1024*1024 {
+			return fiber.ErrRequestEntityTooLarge
+		}
+		return c.Next()
+	})
 
 	app.Get("/swagger/*", swagger.New(swagger.Config{InstanceName: "swagger"}))
 
@@ -278,6 +289,7 @@ func (s *Server) startBackground(ctx context.Context) {
 	e := s.services
 	go e.Hub.Run(ctx)
 	go e.Background.Run(ctx)
+	go runHybridDoctorBackups(ctx, e.Logger)
 	if e.Telegram != nil {
 		go e.Telegram.Run(ctx, e.Logger)
 		go e.Telegram.RunDelivery(ctx)

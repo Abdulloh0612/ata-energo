@@ -23,9 +23,13 @@ services:
       REDIS_URL: cache:6379
       MQTT_HOST: mqtt
       MQTT_PORT: "1883"
+      TZ: ${TIME_ZONE:-Asia/Bishkek}
       SERVER_PORT: "8000"
+      HD_SECURE_COOKIE: ${HD_SECURE_COOKIE:-0}
     ports:
       - "127.0.0.1:${APP_PORT:-8000}:8000"   # только локально; на сервере перед ним Nginx (+ /ws/ с Upgrade)
+    volumes:
+      - ./hybrid-doctor/data:/usr/bin/app/hybrid-doctor/data
     depends_on:
       database:
         condition: service_healthy

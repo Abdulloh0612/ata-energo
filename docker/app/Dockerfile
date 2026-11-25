@@ -8,7 +8,7 @@ RUN go install github.com/cosmtrek/air@v1.51.0 && \
 COPY go.mod go.sum ./
 RUN go mod download
 
-RUN apt-get update && apt-get install -y sshpass
+RUN apt-get update && apt-get install -y sshpass python3
 
 COPY . .
 
@@ -59,7 +59,7 @@ FROM alpine:3.19 AS production
 WORKDIR /usr/bin/app
 
 # Install required packages and create directories in a single layer
-RUN apk add --no-cache bash curl tzdata && \
+RUN apk add --no-cache bash curl tzdata python3 && \
     mkdir -p /usr/bin/app/cmd/logger
 
 # Настройки приходят из docker-compose (env_file: .env + environment), .env в образ не кладём
@@ -71,6 +71,9 @@ RUN sed -i 's/\r$//' /usr/bin/app/entrypoint.sh /usr/bin/app/health-check.sh && 
 
 COPY --from=frontend /ui/dist ./web/dist
 COPY db/migrations /usr/bin/app/db/migrations
+COPY hybrid-doctor/app.py ./hybrid-doctor/
+COPY hybrid-doctor/hd ./hybrid-doctor/hd
+COPY hybrid-doctor/static ./hybrid-doctor/static
 
 # Copy server executable and migrate tool
 COPY --from=builder --chmod=755 /usr/src/app/tmp/server_process /usr/bin/app/server_process

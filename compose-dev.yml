@@ -22,6 +22,7 @@ services:
     environment:
       TZ: ${TIME_ZONE:-Asia/Bishkek}
       SERVER_PORT: "8000"
+      HD_SECURE_COOKIE: ${HD_SECURE_COOKIE:-0}
       DATABASE_URL: postgres://${POSTGRES_USER:-ata}:${POSTGRES_PASSWORD:-ata}@database:5432/${POSTGRES_DB:-ata_energo}?sslmode=disable
       REDIS_ADDR: cache:6379
       REDIS_URL: redis://cache:6379/0
@@ -31,6 +32,8 @@ services:
       MQTT_BROKER_URL: tcp://mqtt:1883
     ports:
       - "127.0.0.1:${APP_PORT:-8000}:8000"
+    volumes:
+      - ./hybrid-doctor/data:/usr/bin/app/hybrid-doctor/data
     depends_on:
       database:
         condition: service_healthy

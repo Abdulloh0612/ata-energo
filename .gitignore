@@ -12,3 +12,6 @@ firebase.json
 web/node_modules/
 web/dist/
 .DS_Store
+
+/hybrid-doctor/data/
+/hybrid-doctor/**/__pycache__/
