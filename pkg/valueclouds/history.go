@@ -10,6 +10,10 @@ import (
 // HistoryPoints converts DCS series to the station dashboard's common units:
 // daily power in W, monthly/yearly energy in kWh. Gaps remain nil.
 func HistoryPoints(raw any, mode string, zone *time.Location) ([]map[string]any, error) {
+	if mode != "D" && mode != "M" && mode != "Y" || zone == nil {
+		return nil, errors.New("ValueClouds: некорректный период истории")
+	}
+	seen := map[string]bool{}
 	data, ok := raw.(map[string]any)
 	if !ok {
 		return nil, errors.New("ValueClouds: некорректная история")
@@ -56,6 +60,11 @@ func HistoryPoints(raw any, mode string, zone *time.Location) ([]map[string]any,
 				rows[ts] = row
 			}
 			field := fields[int(code)]
+			identity := ts + ":" + field
+			if seen[identity] {
+				return nil, errors.New("ValueClouds: повторяющееся измерение истории")
+			}
+			seen[identity] = true
 			row[field] = nil
 			if n, ok := number(point["val"]); ok {
 				row[field] = n

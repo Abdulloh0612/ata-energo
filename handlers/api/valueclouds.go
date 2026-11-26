@@ -258,28 +258,23 @@ func RegisterValueClouds(router fiber.Router, pool *pgxpool.Pool, s *services.Va
 		var updated string
 		for _, d := range devices {
 			items = append(items, vcDeviceView(d))
-			latest, err := s.CloudData(c.UserContext(), cl, d, "latest", "", 1)
+			snapshot, err := cl.ReadSnapshot(c.UserContext(), d)
 			if err != nil {
 				warnings = append(warnings, "Не удалось получить измерения "+d.SN)
-			} else {
-				readings = append(readings, vcReading(d, latest))
-			}
-			if !d.Online() {
 				continue
 			}
-			raw, err := cl.EnergyFlow(c.UserContext(), d)
-			if err != nil {
-				warnings = append(warnings, "Не удалось получить потоки энергии "+d.SN)
+			for _, warning := range snapshot.Warnings {
+				warnings = append(warnings, d.SN+": "+warning)
+			}
+			if snapshot.Latest != nil {
+				readings = append(readings, vcReading(d, snapshot.Latest))
+			}
+			if snapshot.Payload == nil {
 				continue
 			}
-			flow, err := valueclouds.BuildModemPayload(d.SN, raw)
-			if err != nil {
-				warnings = append(warnings, "Нет измерений потоков "+d.SN)
-				continue
-			}
-			valueclouds.EnrichPayload(flow, latest)
-			flows = append(flows, flow)
-			if ts, _ := flow["timestamp"].(string); ts > updated {
+			flows = append(flows, snapshot.Payload)
+			// A station's freshness is limited by its oldest contributing device.
+			if ts, _ := snapshot.Payload["timestamp"].(string); updated == "" || ts < updated {
 				updated = ts
 			}
 		}
@@ -304,31 +299,19 @@ func RegisterValueClouds(router fiber.Router, pool *pgxpool.Pool, s *services.Va
 		if err != nil {
 			return valueCloudsFail(c, err)
 		}
-		latest, err := cl.DeviceLastData(c.UserContext(), *d)
+		snapshot, err := cl.ReadSnapshot(c.UserContext(), *d)
 		if err != nil {
 			return valueCloudsFail(c, err)
 		}
-		warnings := []string{}
-		flow := map[string]any{}
-		if d.Online() {
-			raw, flowErr := cl.DeviceEnergyFlow(c.UserContext(), *d)
-			if flowErr != nil {
-				warnings = append(warnings, "Не удалось обновить потоки энергии")
-			} else {
-				encoded, _ := json.Marshal(raw)
-				var mapped map[string]any
-				_ = json.Unmarshal(encoded, &mapped)
-				flow, flowErr = valueclouds.BuildModemPayload(d.SN, mapped)
-				if flowErr != nil {
-					flow = map[string]any{}
-					warnings = append(warnings, "Нет измерений потоков энергии")
-				}
-			}
+		latest := snapshot.Latest
+		if latest == nil {
+			latest = &valueclouds.LastData{}
 		}
-		encoded, _ := json.Marshal(latest)
-		var rawLatest map[string]any
-		_ = json.Unmarshal(encoded, &rawLatest)
-		valueclouds.EnrichPayload(flow, rawLatest)
+		warnings := snapshot.Warnings
+		flow := snapshot.Payload
+		if flow == nil {
+			flow = map[string]any{}
+		}
 		view := vcDeviceView(*d)
 		var metadata fiber.Map
 		if info, infoErr := cl.DeviceInfo(c.UserContext(), *d); infoErr != nil {
@@ -360,7 +343,7 @@ func RegisterValueClouds(router fiber.Router, pool *pgxpool.Pool, s *services.Va
 			fields = config
 			sort.SliceStable(fields, func(i, j int) bool { return fields[i].Order < fields[j].Order })
 		}
-		return c.JSON(fiber.Map{"device": view, "metadata": metadata, "reading": vcReading(*d, latest), "flow": flow, "active_parameters": active, "chart_fields": fields, "warnings": warnings})
+		return c.JSON(fiber.Map{"device": view, "metadata": metadata, "reading": vcReading(*d, latest), "flow": flow, "active_parameters": active, "chart_fields": fields, "warnings": warnings, "collected_at": snapshot.CollectedAt, "live": snapshot.Payload != nil})
 	})
 	// @Summary Аварии инвертора ValueClouds
 	// @Tags ValueClouds
@@ -461,10 +444,25 @@ func vcReading(d valueclouds.Device, raw any) fiber.Map {
 	}
 	points := []any{}
 	groups := []struct{ source, target string }{{"gd_", "grid"}, {"sy_", "basic"}, {"pv_", "pv"}, {"bt_", "battery"}, {"bc_", "load"}}
+	known := map[string]bool{}
+	for _, group := range groups {
+		known[group.source] = true
+	}
+	unknown := []string{}
+	for source := range latest.Groups {
+		if !known[source] {
+			unknown = append(unknown, source)
+		}
+	}
+	sort.Strings(unknown)
+	for _, source := range unknown {
+		groups = append(groups, struct{ source, target string }{source, "basic"})
+	}
 	for _, group := range groups {
 		for _, p := range latest.Groups[group.source] {
 			point := vcPoint(p.ID, p.Name, string(p.Value), p.Unit, group.target, "")
 			point["charts"] = p.Charts
+			point["source_group"] = group.source
 			points = append(points, point)
 		}
 	}
@@ -477,34 +475,46 @@ func vcReading(d valueclouds.Device, raw any) fiber.Map {
 	}
 	return fiber.Map{"deviceSn": d.SN, "deviceType": "INVERTER", "deviceState": state, "collectionTime": latest.Timestamp, "dataList": points}
 }
+
+// vcSumFlows aggregates only sections present on every contributing inverter.
+// Missing power is unknown, never an implicit zero.
 func vcSumFlows(flows []map[string]any) map[string]any {
 	out := map[string]any{}
-	for _, flow := range flows {
-		for _, section := range []string{"pv", "grid", "battery", "load", "generator"} {
+	if len(flows) == 0 {
+		return out
+	}
+	for _, section := range []string{"pv", "grid", "battery", "load", "generator"} {
+		total := 0.0
+		complete := true
+		for _, flow := range flows {
 			value := flow[section]
 			if section == "pv" {
 				parts, _ := value.([]any)
-				if len(parts) > 0 {
-					value = parts[0]
+				if len(parts) != 1 {
+					complete = false
+					break
 				}
+				value = parts[0]
 			}
 			part, _ := value.(map[string]any)
 			n, ok := part["power"].(float64)
 			if !ok {
-				continue
+				complete = false
+				break
 			}
-			sum, _ := out[section].(map[string]any)
-			if sum == nil {
-				sum = map[string]any{"power": float64(0)}
-				out[section] = sum
-			}
-			sum["power"] = sum["power"].(float64) + n
+			total += n
+		}
+		if !complete {
+			continue
+		}
+		part := map[string]any{"power": total}
+		if section == "pv" {
+			out[section] = []any{part}
+		} else {
+			out[section] = part
 		}
 	}
-	if pv, ok := out["pv"]; ok {
-		out["pv"] = []any{pv}
-	}
-	// SOC cannot be averaged without battery capacities. Preserve it for one inverter only.
+	// Capacity is unknown; SOC cannot be averaged across batteries.
 	if len(flows) == 1 {
 		if battery, ok := flows[0]["battery"]; ok {
 			out["battery"] = battery
@@ -579,7 +589,8 @@ func vcHistory(ctx context.Context, s *services.ValueCloudsService, cl *valueclo
 		}
 	}
 	combined := map[string]map[string]any{}
-	counts := map[string]map[string]int{}
+	contributors := map[string]map[string]map[string]bool{}
+	gaps := map[string]map[string]bool{}
 	for _, d := range devices {
 		years := []int{now.Year()}
 		if mode == "T" {
@@ -624,6 +635,10 @@ func vcHistory(ctx context.Context, s *services.ValueCloudsService, cl *valueclo
 					}
 					n, ok := value.(float64)
 					if !ok {
+						if gaps[key] == nil {
+							gaps[key] = map[string]bool{}
+						}
+						gaps[key][field] = true
 						if _, exists := row[field]; !exists {
 							row[field] = nil
 						}
@@ -631,10 +646,13 @@ func vcHistory(ctx context.Context, s *services.ValueCloudsService, cl *valueclo
 					}
 					total, _ := row[field].(float64)
 					row[field] = total + n
-					if counts[key] == nil {
-						counts[key] = map[string]int{}
+					if contributors[key] == nil {
+						contributors[key] = map[string]map[string]bool{}
 					}
-					counts[key][field]++
+					if contributors[key][field] == nil {
+						contributors[key][field] = map[string]bool{}
+					}
+					contributors[key][field][d.Key()] = true
 				}
 			}
 		}
@@ -646,14 +664,12 @@ func vcHistory(ctx context.Context, s *services.ValueCloudsService, cl *valueclo
 	sort.Strings(keys)
 	result := make([]map[string]any, 0, len(keys))
 	for _, k := range keys {
-		if mode != "T" {
-			for field := range combined[k] {
-				if field == "timeStamp" || field == "year" || field == "month" || field == "day" {
-					continue
-				}
-				if counts[k][field] != len(devices) {
-					combined[k][field] = nil
-				}
+		for field := range combined[k] {
+			if field == "timeStamp" || field == "year" || field == "month" || field == "day" {
+				continue
+			}
+			if len(contributors[k][field]) != len(devices) || gaps[k][field] {
+				combined[k][field] = nil
 			}
 		}
 		result = append(result, combined[k])
@@ -681,6 +697,22 @@ func vcInverterHistory(points []map[string]any) []any {
 
 func vcCompleteFlow(flows []map[string]any, expected int) map[string]any {
 	if len(flows) != expected {
+		return map[string]any{}
+	}
+	var oldest, newest time.Time
+	for _, flow := range flows {
+		at := valueclouds.PayloadTime(flow)
+		if at.IsZero() {
+			return map[string]any{}
+		}
+		if oldest.IsZero() || at.Before(oldest) {
+			oldest = at
+		}
+		if at.After(newest) {
+			newest = at
+		}
+	}
+	if newest.Sub(oldest) > valueclouds.MaxSourceSkew {
 		return map[string]any{}
 	}
 	return vcSumFlows(flows)

@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -35,6 +36,14 @@ type Client struct {
 type APIError struct {
 	Code       int
 	HTTPStatus int
+}
+
+// Session material must never be serialized in API responses or diagnostics.
+func (s Session) MarshalJSON() ([]byte, error) { return []byte(`{}`), nil }
+
+func (e *APIError) sessionExpired() bool {
+	return e.HTTPStatus == http.StatusUnauthorized ||
+		(e.HTTPStatus >= 200 && e.HTTPStatus < 300 && (e.Code == 4 || e.Code == 35 || e.Code == 303))
 }
 
 func (e *APIError) Error() string {
@@ -59,13 +68,17 @@ func NewClient(base string, credentials Credentials, transport *http.Client) *Cl
 	// Never forward credentials across redirects, even to another official host.
 	hc := *transport
 	hc.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	return &Client{base: base, credentials: credentials, http: &hc}
+	return &Client{base: strings.TrimRight(base, "/"), credentials: credentials, http: &hc}
 }
 
 // request is called under mu: response Auth rotations and login cannot race.
 func (c *Client) request(ctx context.Context, method, path string, query url.Values, body any, authenticated bool, out any) error {
+	parsed, err := url.Parse(path)
+	if err != nil || !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") ||
+		parsed.IsAbs() || parsed.Host != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return errors.New("ValueClouds: некорректный путь запроса")
+	}
 	var data []byte
-	var err error
 	if body != nil {
 		data, err = json.Marshal(body)
 		if err != nil {
@@ -101,6 +114,11 @@ func (c *Client) request(ctx context.Context, method, path string, query url.Val
 		return errors.New("ValueClouds: ошибка соединения")
 	}
 	defer resp.Body.Close()
+	// Authentication failures may be returned as an HTML gateway response.
+	// Classify the HTTP status before attempting to decode a JSON envelope.
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return &APIError{Code: -1, HTTPStatus: resp.StatusCode}
+	}
 	var envelope struct {
 		Code    *json.Number    `json:"code"`
 		Success *bool           `json:"success"`
@@ -115,9 +133,16 @@ func (c *Client) request(ctx context.Context, method, path string, query url.Val
 	}
 	code := -1
 	if envelope.Code != nil {
-		code, _ = strconv.Atoi(envelope.Code.String())
+		parsed, parseErr := strconv.Atoi(envelope.Code.String())
+		if parseErr != nil {
+			return errors.New("ValueClouds: некорректный код ответа API")
+		}
+		code = parsed
 	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 || code != 0 || (envelope.Success != nil && !*envelope.Success) {
+	// Both web and app envelopes use 0/200. An explicit failure always wins.
+	if (envelope.Success != nil && !*envelope.Success) ||
+		(envelope.Code != nil && code != 0 && code != 200) ||
+		(envelope.Code == nil && (envelope.Success == nil || !*envelope.Success)) {
 		return &APIError{code, resp.StatusCode}
 	}
 	if auth := resp.Header.Get("Auth"); auth != "" {
@@ -136,10 +161,11 @@ func (c *Client) login(ctx context.Context) error {
 	}
 	c.session = Session{}
 	var data struct {
-		Token  string      `json:"token"`
-		Secret string      `json:"secret"`
-		Auth   string      `json:"auth"`
-		UserID json.Number `json:"userId"`
+		Token  string `json:"token"`
+		Secret string `json:"secret"`
+		Auth   string `json:"auth"`
+		UserID Value  `json:"userId"`
+		UID    Value  `json:"uid"`
 	}
 	err := c.request(ctx, http.MethodPost, loginPath, nil, map[string]string{"account": c.credentials.Account, "password": c.credentials.PasswordSHA1, "project": "IOT"}, false, &data)
 	if err != nil {
@@ -148,7 +174,10 @@ func (c *Client) login(ctx context.Context) error {
 	if data.Token == "" || data.Secret == "" {
 		return errors.New("ValueClouds: вход не вернул token и secret")
 	}
-	c.session.UserID = data.UserID.String()
+	c.session.UserID = string(data.UserID)
+	if c.session.UserID == "" {
+		c.session.UserID = string(data.UID)
+	}
 	c.session.Token = data.Token
 	c.session.Secret = data.Secret
 	if data.Auth != "" {
@@ -166,13 +195,46 @@ func (c *Client) Do(ctx context.Context, method, path string, query url.Values, 
 	}
 	err := c.request(ctx, method, path, query, body, true, out)
 	var apiErr *APIError
-	if errors.As(err, &apiErr) && (apiErr.Code == 4 || apiErr.Code == 35 || apiErr.Code == 303 || apiErr.HTTPStatus == 401) {
+	if errors.As(err, &apiErr) && apiErr.sessionExpired() {
+		c.session = Session{}
+		// Do not replay POSTs or legacy GETs which can change device settings.
+		if !readOnlyRequest(method, path) {
+			return err
+		}
 		if err = c.login(ctx); err != nil {
 			return err
 		}
-		return c.request(ctx, method, path, query, body, true, out)
+		err = c.request(ctx, method, path, query, body, true, out)
+		if errors.As(err, &apiErr) && apiErr.sessionExpired() {
+			c.session = Session{}
+		}
+		return err
 	}
 	return err
+}
+
+func readOnlyRequest(method, path string) bool {
+	if method == http.MethodPost {
+		return path == "/dgm/api/dgm/itemseybond/getInfoByParams"
+	}
+	if method != http.MethodGet {
+		return false
+	}
+	switch path {
+	case devicesPath,
+		"/ppr/web/iotSysUser/auth/getInfo",
+		"/ppe/api/auth/web/querySPDeviceLastData",
+		"/ppe/api/auth/web/queryDeviceEnergyFlow",
+		"/ppe/api/auth/web/queryDevicePars",
+		"/ppe/api/auth/web/queryDeviceChartsFields",
+		"/dev/api/auth/valueCloud/dev/singleDeviceInfo",
+		"/alm/api/auth/web/device/warnings",
+		"/dcs/api/auth/web/ess/device/outputPowerOneDay",
+		"/dcs/api/auth/web/ess/device/energyMonthPerDay",
+		"/dcs/api/auth/web/ess/device/energyYearPerMonth":
+		return true
+	}
+	return false
 }
 func (c *Client) Test(ctx context.Context) error {
 	c.mu.Lock()
@@ -182,116 +244,4 @@ func (c *Client) Test(ctx context.Context) error {
 	}
 	// Never return the user profile: it includes the signing secret.
 	return c.request(ctx, http.MethodGet, "/ppr/web/iotSysUser/auth/getInfo", nil, nil, true, nil)
-}
-
-const devicesPath = "/dev/api/auth/valueCloud/dev/listTDeviceInfo"
-
-type Device struct {
-	ID        string          `json:"id"`
-	Name      string          `json:"deviceName"`
-	PN        string          `json:"pn"`
-	SN        string          `json:"sn"`
-	Serial    string          `json:"deviceSn"`
-	Code      int             `json:"devcode"`
-	Address   int             `json:"devaddr"`
-	Status    int             `json:"deviceStatus"`
-	PID       json.RawMessage `json:"pid"`
-	GroupName string          `json:"deviceGroupName"`
-	Updated   string          `json:"ltsTimeStr"`
-	Created   string          `json:"createTimeStr"`
-}
-
-func (d Device) Key() string {
-	return url.QueryEscape(d.PN) + ":" + url.QueryEscape(d.SN) + ":" + strconv.Itoa(d.Address)
-}
-func (d Device) Query() url.Values {
-	return url.Values{"pn": {d.PN}, "sn": {d.SN}, "devcode": {strconv.Itoa(d.Code)}, "devaddr": {strconv.Itoa(d.Address)}, "i18n": {"ru_RU"}}
-}
-func (c *Client) Devices(ctx context.Context) ([]Device, error) {
-	out := make([]Device, 0)
-	seen := map[string]bool{}
-	for page := 1; page <= 500; page++ {
-		var data struct {
-			Total *int     `json:"total"`
-			Items []Device `json:"items"`
-		}
-		if err := c.Do(ctx, http.MethodGet, devicesPath, url.Values{"page": {strconv.Itoa(page)}, "pageSize": {"100"}}, nil, &data); err != nil {
-			return nil, err
-		}
-		for _, d := range data.Items {
-			if d.PN == "" || d.SN == "" || d.Code <= 0 || d.Address < 0 || seen[d.Key()] {
-				return nil, errors.New("ValueClouds: некорректный или повторяющийся прибор")
-			}
-			seen[d.Key()] = true
-			out = append(out, d)
-		}
-		if data.Total != nil && len(out) == *data.Total {
-			return out, nil
-		}
-		if data.Total == nil && len(data.Items) < 100 {
-			return out, nil
-		}
-		if len(data.Items) == 0 || (data.Total != nil && len(out) > *data.Total) {
-			return nil, errors.New("ValueClouds: неполный каталог устройств")
-		}
-	}
-	return nil, errors.New("ValueClouds: превышен предел страниц")
-}
-func (c *Client) EnergyFlow(ctx context.Context, d Device) (map[string]any, error) {
-	var data map[string]any
-	err := c.Do(ctx, http.MethodGet, "/ppe/api/auth/web/queryDeviceEnergyFlow", d.Query(), nil, &data)
-	return data, err
-}
-
-// Projects returns complete pages before the local catalog can archive absent rows.
-func (c *Client) Projects(ctx context.Context) ([]map[string]any, error) {
-	out := []map[string]any{}
-	seen := map[string]bool{}
-	for page := 1; page <= 500; page++ {
-		var data struct {
-			Total   *int             `json:"total"`
-			Records []map[string]any `json:"records"`
-		}
-		if err := c.Do(ctx, http.MethodPost, "/dgm/api/dgm/itemseybond/getInfoByParams", url.Values{"current": {strconv.Itoa(page)}, "size": {"100"}}, map[string]any{"factoryFlag": true, "itemType": 28}, &data); err != nil {
-			return nil, err
-		}
-		for _, record := range data.Records {
-			id := ProjectID(record)
-			if id == "" || seen[id] {
-				return nil, errors.New("ValueClouds: некорректный или повторяющийся проект")
-			}
-			seen[id] = true
-			out = append(out, record)
-		}
-		if data.Total != nil && len(out) == *data.Total {
-			return out, nil
-		}
-		if data.Total == nil && len(data.Records) < 100 {
-			return out, nil
-		}
-		if len(data.Records) == 0 || (data.Total != nil && len(out) > *data.Total) {
-			return nil, errors.New("ValueClouds: неполный каталог проектов")
-		}
-	}
-	return nil, errors.New("ValueClouds: превышен предел страниц проектов")
-}
-func ProjectID(record map[string]any) string {
-	for _, key := range []string{"id", "pid", "itemId"} {
-		if v, ok := record[key].(string); ok && v != "" && v != "0" {
-			return v
-		}
-		if v, ok := record[key].(float64); ok && v > 0 && v == float64(int64(v)) {
-			return strconv.FormatInt(int64(v), 10)
-		}
-	}
-	return ""
-}
-
-// Status values follow ValueClouds: 0 offline, 1 normal, 2 fault,
-// 3 standby, 4 warning. Standby and alarms still supply measurements.
-func (d Device) Online() bool { return d.Status >= 1 && d.Status <= 4 }
-func (c *Client) Latest(ctx context.Context, d Device) (map[string]any, error) {
-	var data map[string]any
-	err := c.Do(ctx, http.MethodGet, "/ppe/api/auth/web/querySPDeviceLastData", d.Query(), nil, &data)
-	return data, err
 }

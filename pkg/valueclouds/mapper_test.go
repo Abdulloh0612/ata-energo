@@ -43,6 +43,20 @@ func TestFlowRejectsEmptyOrUndatedReadings(t *testing.T) {
 		}
 	}
 }
+
+func TestHistoryRejectsDuplicateSamples(t *testing.T) {
+	raw := decoded(t, `{"items":[{"typeCode":4,"vals":[{"ts":"2026-01","val":1},{"ts":"2026-01","val":2}]}]}`)
+	if _, err := HistoryPoints(raw, "Y", time.UTC); err == nil {
+		t.Fatal("duplicate sample silently overwritten")
+	}
+}
+
+func TestFlowRejectsMetricsInWrongSourceGroup(t *testing.T) {
+	raw := decoded(t, `{"date":1700000000000,"pv_status":[{"par":"bt_battery_capacity","val":"50","unit":"%"}]}`)
+	if _, err := BuildModemPayload("s", raw); err == nil {
+		t.Fatal("SOC entered PV measurements")
+	}
+}
 func TestHistoryGapsUnitsAndTimezone(t *testing.T) {
 	raw := decoded(t, `{"items":[{"typeCode":0,"vals":[{"ts":"2026-11-24 00:00:00","val":"1000"}]},{"typeCode":1,"vals":[{"ts":"2026-11-24 00:00:00","val":null}]},{"typeCode":2,"vals":[{"ts":"2026-11-24 00:00:00","val":"0"}]},{"typeCode":3,"vals":[{"ts":"2026-11-24 00:00:00","val":"74"}]}]}`)
 	zone, _ := time.LoadLocation("Asia/Bishkek")

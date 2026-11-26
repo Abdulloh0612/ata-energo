@@ -13,16 +13,19 @@ import (
 // stay missing; a failed/empty response must never become a zero-filled reading.
 func BuildModemPayload(serial string, flow map[string]any) (map[string]any, error) {
 	msg := map[string]any{"modem": serial}
-	timestamp, ok := number(flow["date"])
-	if !ok || timestamp <= 0 {
+	timestamp, ok := measurementTime(flow["date"])
+	if !ok {
 		return nil, errors.New("ValueClouds: нет времени измерения")
 	}
-	if timestamp < 1e12 {
-		timestamp *= 1000
-	}
-	msg["timestamp"] = time.UnixMilli(int64(timestamp)).UTC().Format(time.RFC3339)
+	msg["timestamp"] = timestamp.Format(time.RFC3339)
 	sections := map[string]string{"pv_status": "pv", "bt_status": "battery", "gd_status": "grid", "bc_status": "load", "ol_status": "generator"}
-	fields := map[string]string{"pv_output_power": "power", "battery_active_power": "power", "bt_battery_capacity": "soc", "grid_active_power": "power", "load_active_power": "power", "oil_output_power": "power"}
+	fields := map[string]map[string]string{
+		"pv_status": {"pv_output_power": "power"},
+		"bt_status": {"battery_active_power": "power", "bt_battery_capacity": "soc"},
+		"gd_status": {"grid_active_power": "power"},
+		"bc_status": {"load_active_power": "power"},
+		"ol_status": {"oil_output_power": "power"},
+	}
 	count := 0
 	for group, section := range sections {
 		items, _ := flow[group].([]any)
@@ -30,7 +33,7 @@ func BuildModemPayload(serial string, flow map[string]any) (map[string]any, erro
 		for _, item := range items {
 			point, _ := item.(map[string]any)
 			key, _ := point["par"].(string)
-			field, known := fields[key]
+			field, known := fields[group][key]
 			if !known {
 				continue
 			}
@@ -45,7 +48,7 @@ func BuildModemPayload(serial string, flow map[string]any) (map[string]any, erro
 			if field == "power" && unit != "" && !strings.EqualFold(unit, "W") && !strings.EqualFold(unit, "kW") {
 				continue
 			}
-			if field == "soc" && (val < 0 || val > 100) {
+			if !validMetric(field, val) || field == "soc" && unit != "%" {
 				continue
 			}
 			part[field] = val
@@ -58,9 +61,6 @@ func BuildModemPayload(serial string, flow map[string]any) (map[string]any, erro
 				msg[section] = part
 			}
 		}
-	}
-	if count > 0 {
-		msg["inverter"] = map[string]any{"error": nil}
 	}
 	if count == 0 {
 		return nil, errors.New("ValueClouds: нет распознанных измерений")
@@ -83,36 +83,24 @@ func number(v any) (float64, bool) {
 	return n, err == nil && !math.IsNaN(n) && !math.IsInf(n, 0)
 }
 
-// EnrichPayload adds stable voltage/current IDs from querySPDeviceLastData.
-// Model-specific register IDs remain available in the raw dashboard readings.
+// EnrichPayload only merges readings from the same acquisition window.
+// New callers should use ReadSnapshot so freshness policy is shared.
 func EnrichPayload(payload map[string]any, latest any) {
-	data, _ := latest.(map[string]any)
-	groups, _ := data["pars"].(map[string]any)
-	fields := map[string]struct{ section, field string }{
-		"gd_rating_voltage": {"grid", "voltage"}, "bt_voltage_1": {"battery", "voltage"},
-		"bt_battery_current": {"battery", "current"}, "bt_battery_capacity": {"battery", "soc"},
+	if payload == nil {
+		return
 	}
-	for _, group := range []string{"gd_", "bt_"} {
-		items, _ := groups[group].([]any)
-		for _, item := range items {
-			point, _ := item.(map[string]any)
-			id, _ := point["id"].(string)
-			mapping, ok := fields[id]
-			if !ok {
-				continue
-			}
-			val, ok := number(point["val"])
-			if !ok {
-				continue
-			}
-			part, _ := payload[mapping.section].(map[string]any)
-			if part == nil {
-				part = map[string]any{}
-				payload[mapping.section] = part
-			}
-			if _, exists := part[mapping.field]; !exists {
-				part[mapping.field] = val
-			}
-		}
+	encoded, err := json.Marshal(latest)
+	if err != nil {
+		return
 	}
+	var data LastData
+	if json.Unmarshal(encoded, &data) != nil {
+		return
+	}
+	measured, ok := measurementTime(float64(data.Timestamp))
+	base := PayloadTime(payload)
+	if !ok || base.IsZero() || measured.Sub(base) > MaxSourceSkew || base.Sub(measured) > MaxSourceSkew {
+		return
+	}
+	addLatestMeasurements(payload, &data)
 }

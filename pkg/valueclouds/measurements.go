@@ -41,6 +41,27 @@ type LastData struct {
 	Timestamp int64                    `json:"gts"`
 	Groups    map[string][]Measurement `json:"pars"`
 }
+
+func (d *LastData) UnmarshalJSON(raw []byte) error {
+	var wire struct {
+		Timestamp Value                    `json:"gts"`
+		Groups    map[string][]Measurement `json:"pars"`
+	}
+	if err := json.Unmarshal(raw, &wire); err != nil {
+		return err
+	}
+	var timestamp int64
+	if wire.Timestamp != "" {
+		var err error
+		timestamp, err = strconv.ParseInt(string(wire.Timestamp), 10, 64)
+		if err != nil {
+			return errors.New("ValueClouds: некорректное время измерения")
+		}
+	}
+	d.Timestamp, d.Groups = timestamp, wire.Groups
+	return nil
+}
+
 type FlowPoint struct {
 	Parameter string `json:"par"`
 	Value     Value  `json:"val"`
@@ -107,9 +128,13 @@ func (c *Client) userID(ctx context.Context) (string, error) {
 	return c.session.UserID, nil
 }
 func (c *Client) DeviceParameters(ctx context.Context, d Device) ([]ActiveParameter, error) {
-	uid, err := c.userID(ctx)
-	if err != nil {
-		return nil, err
+	uid := string(d.UID)
+	var err error
+	if uid == "" {
+		uid, err = c.userID(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 	query := d.Query()
 	query.Set("uid", uid)
@@ -132,4 +157,16 @@ func (c *Client) DeviceChartFields(ctx context.Context, d Device) ([]ChartField,
 	result := []ChartField{}
 	err = c.Do(ctx, http.MethodGet, "/ppe/api/auth/web/queryDeviceChartsFields", url.Values{"uid": {uid}, "devcode": {strconv.Itoa(d.Code)}, "i18n": {"ru_RU"}}, nil, &result)
 	return result, err
+}
+
+func (c *Client) EnergyFlow(ctx context.Context, d Device) (map[string]any, error) {
+	var data map[string]any
+	err := c.Do(ctx, http.MethodGet, "/ppe/api/auth/web/queryDeviceEnergyFlow", d.Query(), nil, &data)
+	return data, err
+}
+
+func (c *Client) Latest(ctx context.Context, d Device) (map[string]any, error) {
+	var data map[string]any
+	err := c.Do(ctx, http.MethodGet, "/ppe/api/auth/web/querySPDeviceLastData", d.Query(), nil, &data)
+	return data, err
 }

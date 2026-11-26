@@ -33,7 +33,7 @@ func TestLoginRefreshAndAuthRotation(t *testing.T) {
 			return
 		}
 		requests++
-		if r.Header.Get("sign") != Sign("/metrics", fmt.Sprintf("key-%d", logins)) || r.Header.Get("token") != fmt.Sprintf("token-%d", logins) {
+		if r.Header.Get("sign") != Sign("/ppe/api/auth/web/querySPDeviceLastData", fmt.Sprintf("key-%d", logins)) || r.Header.Get("token") != fmt.Sprintf("token-%d", logins) {
 			t.Error("missing authentication")
 		}
 		if r.URL.Query().Get("pn") != "a+b" {
@@ -57,7 +57,7 @@ func TestLoginRefreshAndAuthRotation(t *testing.T) {
 	client := NewClient(srv.URL, Credentials{"operator", HashPassword("password")}, srv.Client())
 	for i := 0; i < 2; i++ {
 		var result map[string]int
-		if err := client.Do(context.Background(), http.MethodGet, "/metrics", url.Values{"pn": {"a+b"}}, nil, &result); err != nil {
+		if err := client.Do(context.Background(), http.MethodGet, "/ppe/api/auth/web/querySPDeviceLastData", url.Values{"pn": {"a+b"}}, nil, &result); err != nil {
 			t.Fatal(err)
 		}
 		if result["value"] != 12 {
@@ -80,7 +80,7 @@ func TestAuthRetryIsBounded(t *testing.T) {
 	}))
 	defer srv.Close()
 	cl := NewClient(srv.URL, Credentials{"a", "hashed"}, srv.Client())
-	err := cl.Do(context.Background(), http.MethodGet, "/metrics", nil, nil, nil)
+	err := cl.Do(context.Background(), http.MethodGet, "/ppe/api/auth/web/querySPDeviceLastData", nil, nil, nil)
 	if err == nil || calls != 4 {
 		t.Fatalf("err=%v calls=%d", err, calls)
 	}

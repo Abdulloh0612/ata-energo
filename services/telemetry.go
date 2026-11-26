@@ -11,6 +11,7 @@ import (
 
 	"ata-energo/db/repositories"
 	"ata-energo/pkg/hub"
+	"ata-energo/pkg/valueclouds"
 	"ata-energo/types"
 
 	"go.uber.org/zap"
@@ -291,7 +292,8 @@ func (s *TelemetryService) SaveValues(ctx context.Context, d *types.Device, v ty
 // ProcessModemMessage обрабатывает сообщение модема со всеми данными станции.
 //
 // Разделы, которых нет в сообщении (например, генератор выключен и модем его не прислал),
-// записываются как 0 — то есть "отключено". Возвращает модем или nil, если модем не зарегистрирован.
+// записываются как 0 — то есть "отключено". Для ValueClouds пропуски сохраняются,
+// а время и повторения проверяются по источнику. Возвращает модем или nil, если модем не зарегистрирован.
 func (s *TelemetryService) ProcessModemMessage(ctx context.Context, serial string, data map[string]any) (*types.Modem, error) {
 	serial = strings.TrimSpace(serial)
 	m, err := s.modems.GetBySerial(ctx, serial)
@@ -304,12 +306,27 @@ func (s *TelemetryService) ProcessModemMessage(ctx context.Context, serial strin
 	}
 
 	now := time.Now().UTC()
-	wasOffline := m.Status != types.StatusOnline
-	if err := s.modems.SetOnline(ctx, m.ID, now); err != nil {
-		return nil, err
+	cloudSource := m.Protocol() == types.ProtocolValueClouds
+	if cloudSource {
+		observed := valueclouds.PayloadTime(data)
+		if !valueclouds.FreshMeasurement(observed, now) {
+			return m, fmt.Errorf("ValueClouds: нет актуального времени измерения")
+		}
+		// Polling an unchanged cloud snapshot must not extend its last-seen time
+		// or insert duplicate historical samples.
+		if m.LastSeen != nil && !observed.After(*m.LastSeen) {
+			return m, nil
+		}
+		now = observed
 	}
-	m.Status = types.StatusOnline
-	m.LastSeen = &now
+	wasOffline := m.Status != types.StatusOnline
+	if !cloudSource {
+		if err := s.modems.SetOnline(ctx, m.ID, now); err != nil {
+			return nil, err
+		}
+		m.Status = types.StatusOnline
+		m.LastSeen = &now
+	}
 
 	list, err := s.devices.ListByModem(ctx, m.ID)
 	if err != nil {
@@ -342,6 +359,10 @@ func (s *TelemetryService) ProcessModemMessage(ctx context.Context, serial strin
 			number := i + 1
 			code := DeviceCode(m.Serial, sec.Type, number)
 			d := devices[code]
+			if cloudSource && d != nil && d.LastSeen != nil && !now.After(*d.LastSeen) {
+				updated[code] = true
+				continue
+			}
 			if d == nil {
 				// модем прислал то, чего ещё нет (вторая строка панелей, генератор) — создаём
 				if sec.Type == types.DeviceTypeGenerator && !m.HasGenerator {
@@ -366,7 +387,7 @@ func (s *TelemetryService) ProcessModemMessage(ctx context.Context, serial strin
 
 	// Чего нет в сообщении — значит выключено (0 Вт, 0 В)
 	for _, code := range order {
-		if updated[code] {
+		if updated[code] || cloudSource {
 			continue
 		}
 		d := devices[code]
@@ -379,6 +400,14 @@ func (s *TelemetryService) ProcessModemMessage(ctx context.Context, serial strin
 		}
 	}
 
+	if cloudSource {
+		// Advance the snapshot watermark only after every supplied section saved.
+		if err := s.modems.SetOnline(ctx, m.ID, now); err != nil {
+			return nil, err
+		}
+		m.Status = types.StatusOnline
+		m.LastSeen = &now
+	}
 	if wasOffline {
 		s.log.Info("Модем снова в сети", zap.String("serial", serial))
 	}

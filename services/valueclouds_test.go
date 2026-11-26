@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"ata-energo/db/repositories"
 	"ata-energo/pkg/valueclouds"
@@ -15,6 +16,42 @@ import (
 type vcAccounts struct {
 	repositories.VendorAccountRepository
 	account *types.VendorAccount
+}
+
+func TestValueCloudsCollectorUsesFreshLatestWhenFlowFails(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ppr/web/login/login":
+			_, _ = w.Write([]byte(`{"code":200,"data":{"token":"t","secret":"s"}}`))
+		case "/dev/api/auth/valueCloud/dev/listTDeviceInfo":
+			_, _ = w.Write([]byte(`{"code":200,"data":{"total":1,"items":[{"pn":"p","sn":"s","devcode":1,"devaddr":1,"deviceStatus":1}]}}`))
+		case "/ppe/api/auth/web/querySPDeviceLastData":
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": 200, "data": map[string]any{"gts": now.UnixMilli(), "pars": map[string]any{
+				"pv_": []any{map[string]any{"id": "pv_output_power", "val": "0", "unit": "W"}},
+			}}})
+		case "/ppe/api/auth/web/queryDeviceEnergyFlow":
+			http.Error(w, "unavailable", 503)
+		default:
+			t.Errorf("unexpected route %s", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	a := &types.VendorAccount{ID: 1, Vendor: types.VendorValueClouds, BaseURL: valueclouds.BaseURL, Username: "a", PasswordSHA1: "h", IsActive: true, ProviderEnabled: true}
+	s := NewValueCloudsService(&vcAccounts{account: a}, nil, nil, nil)
+	s.cache[1] = cachedValueClouds{"a|h", valueclouds.NewClient(srv.URL, valueclouds.Credentials{Account: "a", PasswordSHA1: "h"}, srv.Client())}
+	modems := []types.Modem{{Serial: "saved-serial", Connection: map[string]any{"account_id": float64(1), "device_key": "p:s:1"}}}
+	got, err := s.Collect(context.Background(), modems)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := got["saved-serial"]
+	if p == nil || p["modem"] != "saved-serial" || p["timestamp"] != now.Format(time.RFC3339) {
+		t.Fatal(got)
+	}
+	if p["pv"].([]any)[0].(map[string]any)["power"] != 0.0 {
+		t.Fatal(p)
+	}
 }
 
 func (r *vcAccounts) GetByID(context.Context, int64) (*types.VendorAccount, error) {

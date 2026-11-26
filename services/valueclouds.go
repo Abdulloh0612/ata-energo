@@ -359,24 +359,16 @@ func (s *ValueCloudsService) Collect(ctx context.Context, modems []types.Modem) 
 			if !ok || !d.Online() {
 				continue
 			}
-			flow, err := cl.EnergyFlow(ctx, d)
+			snapshot, err := cl.ReadSnapshot(ctx, d)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("аккаунт %d: %w", id, err))
 				continue
 			}
-			payload, err := valueclouds.BuildModemPayload(m.Serial, flow)
-			if err != nil {
-				errs = append(errs, err)
+			if snapshot.Payload == nil {
 				continue
 			}
-			timestamp, _ := payload["timestamp"].(string)
-			measured, parseErr := time.Parse(time.RFC3339, timestamp)
-			if parseErr != nil || time.Since(measured) > 10*time.Minute || measured.After(time.Now().Add(time.Minute)) {
-				continue
-			}
-			if latest, latestErr := cl.Latest(ctx, d); latestErr == nil {
-				valueclouds.EnrichPayload(payload, latest)
-			}
+			payload := snapshot.Payload
+			payload["modem"] = m.Serial
 			out[m.Serial] = payload
 		}
 	}
@@ -391,7 +383,7 @@ func (s *ValueCloudsService) CloudData(ctx context.Context, cl *valueclouds.Clie
 	case "latest":
 		path = "/ppe/api/auth/web/querySPDeviceLastData"
 	case "parameters":
-		path = "/ppe/api/auth/web/queryDeviceOneDataxxx"
+		return cl.DeviceParameters(ctx, d)
 	case "flow":
 		path = "/ppe/api/auth/web/queryDeviceEnergyFlow"
 	case "alerts":
