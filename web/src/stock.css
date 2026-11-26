@@ -1,0 +1,24 @@
+.stock-page { min-width: 0; }
+.stock-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.stock-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin: 12px 0 18px; }
+.stock-tabs button { min-height: 44px; padding: 8px 16px; color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+.stock-tabs button.active { color: var(--text); border-color: var(--accent); }
+.stock-search { display: grid; gap: 7px; max-width: 420px; margin-bottom: 16px; color: var(--muted); font-size: 13px; }
+.stock-search input, .stock-form input, .stock-form select, .stock-form textarea { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--surface); font: inherit; }
+.stock-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.stock-table { width: 100%; border-collapse: collapse; text-align: left; }
+.stock-table th, .stock-table td { padding: 13px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.stock-table th { color: var(--muted); font-size: 12px; font-weight: 600; }
+.stock-table td { font-variant-numeric: tabular-nums; }
+.stock-table td:first-child { white-space: normal; min-width: 190px; }
+.stock-table small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.stock-form { display: grid; gap: 11px; }
+.stock-error { color: var(--danger); }
+@media (max-width: 700px) {
+  .stock-table, .stock-table tbody, .stock-table tr, .stock-table td { display: block; width: 100%; }
+  .stock-table thead { display: none; }
+  .stock-table tr { padding: 8px 14px; border-bottom: 1px solid var(--border); }
+  .stock-table td { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border: 0; white-space: normal; }
+  .stock-table td:first-child { display: block; }
+  .stock-page .page-head { align-items: flex-start; gap: 12px; flex-direction: column; }
+}
